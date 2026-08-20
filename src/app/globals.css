@@ -1,0 +1,449 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   THE token block — FRONTEND-STANDARD §1 / hallmark "locked tokens".
+   Every colour, face, space, radius and z-index in this app resolves here and
+   nowhere else. Tailwind (tailwind.config.ts) and Mantine (src/lib/theme.ts)
+   are both thin pointers at these properties, so there is one system, not two.
+
+   Anchor hue 65 (warm). Accent hue 45 (burnt signal orange). Per hallmark
+   references/color.md every neutral carries the anchor's chroma tint, and there
+   is no #000 and no #fff anywhere in this file.
+   =========================================================================== */
+:root {
+  /* -- surfaces: paper -> ink, all tinted toward the anchor hue -------------- */
+  --color-paper: oklch(97% 0.008 65);
+  --color-paper-2: oklch(94% 0.01 65);
+  --color-paper-3: oklch(90.5% 0.012 65);
+  --color-rule: oklch(84% 0.01 65); /* hairline separators (decorative) */
+  --color-rule-strong: oklch(60% 0.012 65); /* UI boundaries — 3.1:1 on paper */
+  --color-neutral: oklch(56% 0.01 65); /* icons / boundaries — 3.4:1, NOT body */
+  --color-muted: oklch(43% 0.01 60); /* helper + secondary text — 5.4:1 */
+  --color-ink: oklch(21% 0.012 60); /* body + headings — 14:1 */
+
+  /* -- the ONE accent. Budget: links, active nav, focus ring, primary CTA.
+        Never a background fill over ~3% of the viewport. ---------------------- */
+  --color-accent: oklch(46% 0.145 45); /* CTA fill + link text — 4.9:1 on paper */
+  --color-accent-strong: oklch(38% 0.13 45); /* hover / active */
+  --color-accent-ring: oklch(56% 0.17 45); /* focus ring — 3.4:1, UI-grade */
+  --color-accent-soft: oklch(94% 0.028 45); /* tint wash */
+
+  /* -- meaning colours. Never carried by hue alone: every use pairs with an
+        icon or a word (FRONTEND-STANDARD §2, hallmark colour bans). ---------- */
+  --color-danger: oklch(45% 0.15 25);
+  --color-danger-soft: oklch(94.5% 0.028 25);
+  --color-success: oklch(45% 0.1 150);
+
+  /* -- type. Display face + body face + mono; roman headers only.
+        Literal face names appear ONLY here, as fallbacks behind the next/font
+        variables — no rule anywhere else in src/ declares a font-family. ----- */
+  --font-display: var(--font-face-display), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-face-body), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-face-mono), ui-monospace, "Cascadia Mono", monospace;
+
+  /* -- 4pt spacing scale, semantic sizes derived from it -------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* -- the six-level named z scale. No arbitrary z-index anywhere. ---------- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+
+  /* -- motion. Exponential ease-out only; no bounce, no elastic, and nothing
+        that could ever be spelled `transition-all`. ------------------------- */
+  --dur-short: 110ms;
+  --dur-base: 180ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Mantine reads these; they are pointers, not a second palette. */
+  --mantine-color-body: var(--color-paper);
+  --mantine-color-text: var(--color-ink);
+}
+
+@layer base {
+  html,
+  body {
+    /* `clip`, never `hidden` — hidden creates a scroll container and breaks
+       position:sticky in the header (hallmark responsive gate 34). */
+    overflow-x: clip;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  /* Long repo URLs and Thai display headings must break inside a word rather
+     than push the page wide at 375px. */
+  h1,
+  h2,
+  h3 {
+    font-style: normal; /* roman headers — hallmark gate 38a */
+    overflow-wrap: anywhere;
+    min-width: 0;
+    color: var(--color-ink);
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------------
+     Focus ring — the single most important interaction rule here.
+     It is an `outline`, it is applied on :focus-visible only, and NOTHING
+     transitions it. A keyboard user sees it on frame one.
+     --------------------------------------------------------------------- */
+  .cr-focus:focus-visible,
+  .cr-field input:focus-visible,
+  .cr-field textarea:focus-visible,
+  /* A bare checkbox matches none of the other selectors here, so without this
+     line it silently fell back to the browser's own 1px auto ring. */
+  .cr-check input:focus-visible,
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--color-accent-ring);
+    outline-offset: 2px;
+    /* transition intentionally omitted — see hallmark "focus rings that animate in" */
+  }
+
+  /* ---------------------------------------------------------------------
+     Buttons. Eight states, each explicit:
+     default · hover · focus-visible · active · disabled · loading · error ·
+     success. Loading/error/success are driven by [data-loading]/[data-state].
+     --------------------------------------------------------------------- */
+  .cr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    /* clickable text is a one-line object — hallmark gate 49 */
+    white-space: nowrap;
+    min-height: 44px; /* coarse-pointer hit target */
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-short) var(--ease-out),
+      border-color var(--dur-short) var(--ease-out),
+      color var(--dur-short) var(--ease-out);
+  }
+
+  .cr-btn--primary {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-paper);
+  }
+  .cr-btn--primary:hover:not(:disabled):not([data-loading="true"]) {
+    background-color: var(--color-accent-strong);
+    border-color: var(--color-accent-strong);
+  }
+  .cr-btn--primary:active:not(:disabled):not([data-loading="true"]) {
+    background-color: var(--color-accent-strong);
+    transform: translateY(1px);
+  }
+
+  .cr-btn--quiet {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--color-muted);
+    padding-inline: var(--space-3);
+    font-weight: 500;
+  }
+  .cr-btn--quiet:hover:not(:disabled) {
+    background-color: var(--color-paper-3);
+    color: var(--color-ink);
+  }
+  .cr-btn--quiet:active:not(:disabled) {
+    background-color: var(--color-paper-3);
+    color: var(--color-ink);
+  }
+
+  .cr-btn:disabled,
+  .cr-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    background-color: var(--color-paper-3);
+    border-color: var(--color-rule);
+    color: var(--color-neutral);
+  }
+
+  .cr-btn[data-loading="true"] {
+    cursor: progress;
+    background-color: var(--color-accent-strong);
+    border-color: var(--color-accent-strong);
+    color: var(--color-paper);
+  }
+
+  .cr-btn[data-state="error"] {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: var(--color-paper);
+  }
+  .cr-btn[data-state="success"] {
+    background-color: var(--color-success);
+    border-color: var(--color-success);
+    color: var(--color-paper);
+  }
+
+  /* A hand-built spinner — no Lottie, no library. */
+  .cr-spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    animation: cr-rotate 640ms linear infinite;
+  }
+
+  /* ---------------------------------------------------------------------
+     Fields. Same eight states; the border carries the state, and error also
+     carries an icon + words (never colour alone).
+     --------------------------------------------------------------------- */
+  .cr-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .cr-field > label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--color-muted);
+  }
+  .cr-field input {
+    width: 100%;
+    min-height: 44px;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    transition:
+      border-color var(--dur-short) var(--ease-out),
+      background-color var(--dur-short) var(--ease-out);
+  }
+  .cr-field input::placeholder {
+    color: var(--color-muted);
+  }
+  .cr-field input:hover:not(:disabled) {
+    border-color: var(--color-ink);
+  }
+  .cr-field input:active:not(:disabled) {
+    border-color: var(--color-ink);
+  }
+  .cr-field input:disabled {
+    background-color: var(--color-paper-3);
+    color: var(--color-neutral);
+    cursor: not-allowed;
+  }
+  .cr-field[data-state="loading"] input {
+    background-color: var(--color-paper-2);
+  }
+  .cr-field[data-state="error"] input {
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+  }
+  .cr-field[data-state="success"] input {
+    border-color: var(--color-success);
+  }
+
+  /* The extra-context textarea. Same border/state language as an input; it just
+     grows vertically and is the one control here the user may resize. */
+  .cr-field textarea {
+    width: 100%;
+    min-height: 7.5rem;
+    padding: var(--space-3);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font: inherit;
+    line-height: 1.55;
+    resize: vertical;
+    transition:
+      border-color var(--dur-short) var(--ease-out),
+      background-color var(--dur-short) var(--ease-out);
+  }
+  .cr-field textarea::placeholder {
+    color: var(--color-muted);
+  }
+  .cr-field textarea:hover:not(:disabled) {
+    border-color: var(--color-ink);
+  }
+  .cr-field textarea:disabled {
+    background-color: var(--color-paper-3);
+    color: var(--color-neutral);
+    cursor: not-allowed;
+  }
+  .cr-field[data-state="error"] textarea {
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+  }
+
+  /* The "private repository" checkbox. A real <input type=checkbox> inside its
+     own label, so tap, click, Space and screen readers all work with no JS. */
+  .cr-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    /* the whole row is the hit target, not just the 18px box */
+    min-height: 44px;
+    padding-inline: var(--space-1);
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .cr-check input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+  .cr-check:hover {
+    color: var(--color-accent-strong);
+  }
+
+  /* ---------------------------------------------------------------------
+     The language switch: two real radio inputs, so it works on tap and on
+     keyboard with arrow keys. No hover-only affordance anywhere in the shell.
+     --------------------------------------------------------------------- */
+  .cr-segmented {
+    display: inline-flex;
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .cr-segmented label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* 44px on both axes — the language switch is a primary tap target on a
+       phone, and a 36px-tall segment fails the hit-target floor. */
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: var(--space-2);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      background-color var(--dur-short) var(--ease-out),
+      color var(--dur-short) var(--ease-out);
+  }
+  .cr-segmented label:hover {
+    background-color: var(--color-paper-3);
+    color: var(--color-ink);
+  }
+  .cr-segmented input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .cr-segmented input:checked + span {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .cr-segmented input:focus-visible + span {
+    outline: 2px solid var(--color-accent-ring);
+    outline-offset: -2px;
+  }
+  .cr-segmented span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding-inline: var(--space-3);
+  }
+
+  /* A <legend> for a radio group, typographically identical to a field label
+     so a segmented control and a text input read as the same kind of thing.
+     Declared here rather than as an arbitrary Tailwind value at each call site
+     (FRONTEND-STANDARD §3 item 5). */
+  .cr-legend {
+    padding: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--color-muted);
+  }
+
+  /* The new-report worksheet: one column on a phone, an asymmetric
+     fields + run-rail pair from 64rem up. Deliberately NOT three equal
+     columns, and the rail is narrower than the fields, never a match. */
+  .cr-worksheet {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-10);
+  }
+  @media (min-width: 64rem) {
+    .cr-worksheet {
+      grid-template-columns: minmax(0, 1fr) 17rem;
+      gap: var(--space-12);
+    }
+  }
+
+  /* Numerals in dates, times, counts and durations always align. */
+  .cr-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes cr-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* One orchestrated entrance, on the login masthead only. Everything else in the
+   app is simply there when you arrive. */
+@keyframes cr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cr-enter {
+  animation: cr-rise var(--dur-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-enter,
+  .cr-spinner {
+    animation: none;
+  }
+  .cr-btn,
+  .cr-field input,
+  .cr-field textarea,
+  .cr-segmented label {
+    transition: none;
+  }
+}
