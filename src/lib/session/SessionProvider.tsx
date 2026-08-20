@@ -9,7 +9,7 @@ import {
   setUnauthorizedHandler,
   type SessionUser,
 } from "@/lib/api/client";
-import { useI18n } from "@/lib/i18n/I18nProvider";
+import { readStoredLanguage, useI18n } from "@/lib/i18n/I18nProvider";
 
 export const LOGIN_PATH = "/login";
 export const HOME_PATH = "/reports/new";
@@ -46,7 +46,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchMe(language, controller.signal)
+    // The stored preference, not the context value: this effect runs before the
+    // provider above has read localStorage, so `language` is still the default
+    // here and a `en` user's first server message would come back in Thai.
+    fetchMe(readStoredLanguage(), controller.signal)
       .then((user) => setState({ status: "authenticated", user }))
       .catch((cause: unknown) => {
         if (cause instanceof DOMException && cause.name === "AbortError") return;

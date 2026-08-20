@@ -91,6 +91,31 @@ const th = {
   "reports.new.error.checkFields": "กรุณาตรวจสอบข้อมูลในแบบฟอร์มอีกครั้ง",
 
   "reports.view.heading": "รายงาน",
+  "reports.view.params.repo": "Repository",
+  "reports.view.params.period": "ช่วงเวลา",
+  "reports.view.params.branch": "Branch",
+  "reports.view.params.author": "ผู้เขียนคอมมิต",
+  "reports.view.params.language": "ภาษาของรายงาน",
+  "reports.view.params.commits": "จำนวนคอมมิต",
+  "reports.view.params.empty": "—",
+
+  "reports.view.running.title": "กำลังสร้างรายงาน",
+  "reports.view.running.hint": "หน้านี้จะอัปเดตเองจนกว่าจะเสร็จ เปิดค้างไว้ได้",
+  "reports.view.progress.step": "ขั้นตอน",
+  "reports.view.stage.CLONING": "ดึงข้อมูล repository",
+  "reports.view.stage.READING_CODEBASE": "อ่านโครงสร้างโค้ด",
+  "reports.view.stage.READING_COMMITS": "อ่านคอมมิตในช่วงเวลา",
+  "reports.view.stage.AI_PROJECT": "วิเคราะห์ภาพรวมโปรเจกต์",
+  "reports.view.stage.AI_COMMITS": "วิเคราะห์งานที่ทำ",
+  "reports.view.stage.AI_WRITING": "เรียบเรียงรายงาน",
+  "reports.view.state.done": "เสร็จแล้ว",
+  "reports.view.state.current": "กำลังทำ",
+  "reports.view.state.pending": "รอคิว",
+
+  "reports.view.noCommits.title": "ไม่พบคอมมิตในช่วงเวลาที่เลือก",
+  "reports.view.failed.title": "สร้างรายงานไม่สำเร็จ",
+  "reports.view.tryAgain": "ลองอีกครั้ง",
+  "reports.view.offline": "ติดต่อเซิร์ฟเวอร์ไม่ได้ กำลังลองใหม่",
 } as const;
 
 export type MessageKey = keyof typeof th;
@@ -164,6 +189,31 @@ const en: Record<MessageKey, string> = {
   "reports.new.error.checkFields": "Please check the highlighted fields.",
 
   "reports.view.heading": "Report",
+  "reports.view.params.repo": "Repository",
+  "reports.view.params.period": "Period",
+  "reports.view.params.branch": "Branch",
+  "reports.view.params.author": "Commit author",
+  "reports.view.params.language": "Report language",
+  "reports.view.params.commits": "Commits",
+  "reports.view.params.empty": "—",
+
+  "reports.view.running.title": "Generating the report",
+  "reports.view.running.hint": "This page updates itself until the run finishes. You can leave it open.",
+  "reports.view.progress.step": "Step",
+  "reports.view.stage.CLONING": "Fetching the repository",
+  "reports.view.stage.READING_CODEBASE": "Reading the codebase",
+  "reports.view.stage.READING_COMMITS": "Reading the commits in the period",
+  "reports.view.stage.AI_PROJECT": "Analysing the project",
+  "reports.view.stage.AI_COMMITS": "Analysing the work done",
+  "reports.view.stage.AI_WRITING": "Writing the report",
+  "reports.view.state.done": "done",
+  "reports.view.state.current": "in progress",
+  "reports.view.state.pending": "waiting",
+
+  "reports.view.noCommits.title": "No commits in the selected period",
+  "reports.view.failed.title": "Could not generate the report",
+  "reports.view.tryAgain": "Try again",
+  "reports.view.offline": "Cannot reach the server — retrying.",
 };
 
 export const dictionaries: Record<Language, Record<MessageKey, string>> = { th, en };

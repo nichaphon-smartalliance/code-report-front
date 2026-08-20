@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   ApiError,
   createReport,
@@ -13,6 +13,7 @@ import {
 import { formatIsoDate } from "@/lib/format";
 import { LANGUAGES, type Language, type MessageKey } from "@/lib/i18n/dictionaries";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { takeRetryParams } from "@/lib/reports/retry";
 import { reportPath } from "@/lib/session/SessionProvider";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 
@@ -110,6 +111,25 @@ export function NewReportForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
 
+  /**
+   * "Try again" from a FAILED run (TASK-008 item 5). The handoff carries the
+   * run's own `params` and **nothing else** — there is no `pat` in it, so a
+   * retried private run asks for the token again, which is the point.
+   * Read once, after mount, so the server render and the first client render
+   * agree.
+   */
+  useEffect(() => {
+    const retry = takeRetryParams();
+    if (retry === null) return;
+    setRepoUrl(retry.repoUrl);
+    setBranch(retry.branch);
+    setAuthor(retry.author);
+    setDateFrom(retry.dateFrom);
+    setDateTo(retry.dateTo);
+    setReportLanguage(retry.language);
+    setMode(retry.dateFrom === retry.dateTo ? "day" : "range");
+  }, []);
+
   const busy = phase === "submitting";
   const showSpinner = useDelayedFlag(busy);
 
@@ -129,7 +149,7 @@ export function NewReportForm() {
       else if (span > MAX_SPAN_DAYS) errors.dateTo = t("reports.new.error.dateSpan");
     }
 
-    if (extraContext.length > EXTRA_CONTEXT_MAX) {
+    if ([...extraContext].length > EXTRA_CONTEXT_MAX) {
       errors.extraContext = t("reports.new.error.extraContextTooLong");
     }
     return errors;
@@ -192,7 +212,24 @@ export function NewReportForm() {
     }
   }
 
-  const counterOver = extraContext.length > EXTRA_CONTEXT_MAX;
+  /**
+   * Codepoints, not UTF-16 code units (Sober's TASK-007 review, minor 3): an
+   * emoji costs 2 units and 1 codepoint, so counting units could make the
+   * client stricter than the server — the one direction client validation must
+   * never take. Counting codepoints is never stricter under either reading.
+   */
+  const contextLength = [...extraContext].length;
+  const counterOver = contextLength > EXTRA_CONTEXT_MAX;
+
+  /**
+   * Server field errors whose control is not on screen (minor 1): `language`
+   * has no field of its own, and `pat` is unmounted while the toggle is off.
+   * Without this they would vanish, leaving only the envelope message.
+   */
+  const orphanErrors = [
+    ...(fieldErrors.language === undefined ? [] : [fieldErrors.language]),
+    ...(!isPrivate && fieldErrors.pat !== undefined ? [fieldErrors.pat] : []),
+  ];
   const fromDisplay = formatIsoDate(dateFrom);
   const toDisplay = formatIsoDate(effectiveDateTo);
 
@@ -450,7 +487,7 @@ export function NewReportForm() {
                 className={`cr-nums m-0 text-xs ${counterOver ? "font-semibold text-danger" : "text-muted"}`}
                 aria-live="polite"
               >
-                {extraContext.length.toLocaleString("en-US")} /{" "}
+                {contextLength.toLocaleString("en-US")} /{" "}
                 {EXTRA_CONTEXT_MAX.toLocaleString("en-US")} {t("reports.new.extraContext.counter")}
               </p>
             </Field>
@@ -489,6 +526,11 @@ export function NewReportForm() {
                   <strong className="font-semibold">{t("reports.new.errorTitle")}</strong>
                   {" — "}
                   {formError}
+                  {orphanErrors.map((message) => (
+                    <span key={message} className="mt-2 block">
+                      {message}
+                    </span>
+                  ))}
                 </span>
               </p>
             ) : null}
@@ -496,7 +538,11 @@ export function NewReportForm() {
             <button
               type="submit"
               className="cr-btn cr-btn--primary mt-5 w-full"
-              disabled={busy || counterOver}
+              // Stays disabled through `success` as well: `router.replace` is
+              // async, and a second click in that window would start a SECOND
+              // job — tokenless, because the PAT has just been cleared
+              // (Sober's TASK-007 review, minor 2).
+              disabled={busy || phase === "success" || counterOver}
               data-loading={busy ? "true" : undefined}
               data-state={phase === "error" || phase === "success" ? phase : undefined}
               aria-describedby={formError ? ids.formError : undefined}

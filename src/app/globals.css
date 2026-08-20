@@ -411,6 +411,197 @@
   .cr-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* ---------------------------------------------------------------------
+     The report view (TASK-008). A document, not a worksheet: a ribbon of
+     facts across the top, then one reading column. No card, no rail.
+     --------------------------------------------------------------------- */
+  /* A ribbon, not a grid: each fact is as wide as the fact, they wrap where
+     they run out of room, and the repository URL takes its own line. There is
+     deliberately no equal-column layout here. */
+  .cr-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--space-10);
+    row-gap: var(--space-4);
+    margin: 0;
+    padding-top: var(--space-4);
+    border-block-start: 1px solid var(--color-rule-strong);
+  }
+  .cr-ribbon__item {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  .cr-ribbon__item--wide {
+    flex-basis: 100%;
+  }
+
+  /* A determinate bar. It moves when the server says a stage changed and at no
+     other time — no indeterminate shimmer, no fake creep. */
+  .cr-progress {
+    block-size: 4px;
+    inline-size: 100%;
+    max-inline-size: 62ch;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-paper-3);
+    overflow: hidden;
+  }
+  .cr-progress > span {
+    display: block;
+    block-size: 100%;
+    background-color: var(--color-accent);
+    transition: inline-size var(--dur-base) var(--ease-out);
+  }
+
+  .cr-stages {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cr-stages > li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 0.9375rem;
+    color: var(--color-muted);
+  }
+  .cr-stages > li[data-state="done"] {
+    color: var(--color-ink);
+  }
+  .cr-stages > li[data-state="current"] {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  .cr-stages > li[data-state="pending"] svg {
+    color: var(--color-neutral);
+  }
+  .cr-stages__state {
+    margin-inline-start: auto;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-muted);
+  }
+
+  /* ---------------------------------------------------------------------
+     Rendered report prose. Element rules rather than a utility per node,
+     because the elements come from Markdown and no component sees them.
+     Every value here is a token; there is no second type scale.
+     --------------------------------------------------------------------- */
+  .cr-prose {
+    color: var(--color-ink);
+    font-size: 1rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+  .cr-prose > :first-child {
+    margin-block-start: 0;
+  }
+  .cr-prose h2,
+  .cr-prose h3,
+  .cr-prose h4,
+  .cr-prose h5,
+  .cr-prose h6 {
+    margin-block: var(--space-10) var(--space-3);
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .cr-prose h2 {
+    font-size: 1.5rem;
+  }
+  .cr-prose h3 {
+    font-size: 1.25rem;
+  }
+  .cr-prose h4,
+  .cr-prose h5,
+  .cr-prose h6 {
+    font-size: 1.0625rem;
+  }
+  .cr-prose p,
+  .cr-prose ul,
+  .cr-prose ol {
+    margin-block: var(--space-4);
+  }
+  .cr-prose ul,
+  .cr-prose ol {
+    padding-inline-start: var(--space-6);
+  }
+  .cr-prose li {
+    margin-block: var(--space-2);
+  }
+  .cr-prose a {
+    color: var(--color-accent);
+    text-underline-offset: 2px;
+  }
+  .cr-prose strong {
+    font-weight: 600;
+  }
+  .cr-prose blockquote {
+    margin-inline: 0;
+    padding-inline-start: var(--space-4);
+    border-inline-start: 2px solid var(--color-rule-strong);
+    color: var(--color-muted);
+  }
+  /* Inline code carries file paths and identifiers — legible, never clipped. */
+  .cr-prose code {
+    padding: 0.1em var(--space-1);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-paper-2);
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+  }
+  .cr-prose pre {
+    margin-block: var(--space-5);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    /* The surface alone separates a code block from the prose — a hairline
+       border on top of it would be a 1.37:1 line carrying nothing. */
+    background-color: var(--color-paper-2);
+    /* A code block scrolls; it never wraps a path into nonsense. */
+    overflow-x: auto;
+  }
+  .cr-prose pre code {
+    padding: 0;
+    background-color: transparent;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    overflow-wrap: normal;
+    white-space: pre;
+  }
+  .cr-prose hr {
+    margin-block: var(--space-8);
+    border: 0;
+    border-block-start: 1px solid var(--color-rule);
+  }
+  .cr-prose img {
+    max-inline-size: 100%;
+    height: auto;
+  }
+  /* Tables never truncate their data (FRONTEND-STANDARD §2): they scroll. */
+  .cr-table-scroll {
+    margin-block: var(--space-5);
+    overflow-x: auto;
+  }
+  .cr-prose table {
+    border-collapse: collapse;
+    inline-size: 100%;
+  }
+  .cr-prose th,
+  .cr-prose td {
+    padding: var(--space-2) var(--space-3);
+    border-block-end: 1px solid var(--color-rule);
+    text-align: start;
+    white-space: nowrap;
+    vertical-align: top;
+  }
+  .cr-prose th {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
 }
 
 @keyframes cr-rotate {
@@ -443,7 +634,8 @@
   .cr-btn,
   .cr-field input,
   .cr-field textarea,
-  .cr-segmented label {
+  .cr-segmented label,
+  .cr-progress > span {
     transition: none;
   }
 }

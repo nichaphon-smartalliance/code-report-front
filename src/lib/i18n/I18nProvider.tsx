@@ -11,6 +11,30 @@ import {
 
 const STORAGE_KEY = "cr.uiLanguage";
 
+/**
+ * The stored UI preference, read outside React (TASK-006 minor, carried into
+ * TASK-008 by Sober).
+ *
+ * The provider deliberately reads localStorage in an effect so the server HTML
+ * and the first client render agree — which means that during the very first
+ * commit `language` is still the default, and any request fired from a child's
+ * mount effect (child effects run before the provider's) would go out with
+ * `Accept-Language: th` even for a user whose preference is `en`. That is the
+ * language the SERVER writes its error messages in, so it is visible the moment
+ * a server message is rendered on first paint.
+ *
+ * `setLanguage` writes this key on every switch, so this function and the
+ * context value never disagree after mount.
+ */
+export function readStoredLanguage(): Language {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return isLanguage(stored) ? stored : DEFAULT_LANGUAGE;
+  } catch {
+    return DEFAULT_LANGUAGE;
+  }
+}
+
 type I18nValue = {
   language: Language;
   setLanguage: (next: Language) => void;
@@ -32,8 +56,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (isLanguage(stored)) setLanguageState(stored);
+    setLanguageState(readStoredLanguage());
   }, []);
 
   useEffect(() => {
