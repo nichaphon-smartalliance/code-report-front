@@ -220,87 +220,25 @@
   }
 
   /* ---------------------------------------------------------------------
-     Buttons. Eight states, each explicit:
-     default · hover · focus-visible · active · disabled · loading · error ·
-     success. Loading/error/success are driven by [data-loading]/[data-state].
+     What used to live here: `.cr-btn`, `.cr-btn--primary` and `.cr-btn--quiet`
+     — the hand-rolled button TASK-006/008 wrote before Mantine arrived. The
+     report view's "try again" was its last caller and TASK-013 rebuilt it as a
+     Mantine `Button`, so all three now style nothing. `--quiet` had already
+     lost its last caller at TASK-011; it goes with the block rather than
+     staying behind as one orphan rule.
+
+     Their eight-state discipline lives on in `src/lib/theme.ts` (the accent /
+     danger / success palettes and the `--control-h` floor), in the focus-ring
+     rule above and in the two hover states at the bottom of this file — the
+     same place TASK-012 sent `.cr-field`'s.
      --------------------------------------------------------------------- */
-  .cr-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    /* clickable text is a one-line object — hallmark gate 49 */
-    white-space: nowrap;
-    min-height: 44px; /* coarse-pointer hit target */
-    padding-inline: var(--space-5);
-    border-radius: var(--radius-md);
-    border: 1px solid transparent;
-    font-weight: 600;
-    line-height: 1;
-    cursor: pointer;
-    transition:
-      background-color var(--dur-short) var(--ease-out),
-      border-color var(--dur-short) var(--ease-out),
-      color var(--dur-short) var(--ease-out);
-  }
 
-  .cr-btn--primary {
-    background-color: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-paper);
-  }
-  .cr-btn--primary:hover:not(:disabled):not([data-loading="true"]) {
-    background-color: var(--color-accent-strong);
-    border-color: var(--color-accent-strong);
-  }
-  .cr-btn--primary:active:not(:disabled):not([data-loading="true"]) {
-    background-color: var(--color-accent-strong);
-    transform: translateY(1px);
-  }
-
-  .cr-btn--quiet {
-    background-color: transparent;
-    border-color: transparent;
-    color: var(--color-muted);
-    padding-inline: var(--space-3);
-    font-weight: 500;
-  }
-  .cr-btn--quiet:hover:not(:disabled) {
-    background-color: var(--color-paper-3);
-    color: var(--color-ink);
-  }
-  .cr-btn--quiet:active:not(:disabled) {
-    background-color: var(--color-paper-3);
-    color: var(--color-ink);
-  }
-
-  .cr-btn:disabled,
-  .cr-btn[aria-disabled="true"] {
-    cursor: not-allowed;
-    background-color: var(--color-paper-3);
-    border-color: var(--color-rule);
-    color: var(--color-neutral);
-  }
-
-  .cr-btn[data-loading="true"] {
-    cursor: progress;
-    background-color: var(--color-accent-strong);
-    border-color: var(--color-accent-strong);
-    color: var(--color-paper);
-  }
-
-  .cr-btn[data-state="error"] {
-    background-color: var(--color-danger);
-    border-color: var(--color-danger);
-    color: var(--color-paper);
-  }
-  .cr-btn[data-state="success"] {
-    background-color: var(--color-success);
-    border-color: var(--color-success);
-    color: var(--color-paper);
-  }
-
-  /* A hand-built spinner — no Lottie, no library. */
+  /* A hand-built spinner — no Lottie, no library. KEPT at TASK-013 rather than
+     swapped for Mantine's `Loader`: this one is 14px, inherits `currentColor`,
+     and is already switched off by the `prefers-reduced-motion` block below.
+     Mantine's loader animates from its own stylesheet, which that block does
+     not reach, so replacing it would have quietly cost us a reduced-motion
+     guarantee. One spinning object in the app, and it is this one. */
   .cr-spinner {
     width: 14px;
     height: 14px;
@@ -434,31 +372,47 @@
   }
 
   /* ---------------------------------------------------------------------
-     The report view (TASK-008). A document, not a worksheet: a ribbon of
-     facts across the top, then one reading column. No card, no rail.
+     Hallmark · macrostructure: Narrative Workflow (TASK-013 redesign of the
+     TASK-008 report view).
+
+     It was a document: a wrap-ribbon of facts, then one reading column. The
+     document shape is the one macrostructure cobalt explicitly refuses
+     ("Long Document — prose-led; route warm-editorial instead"), and this
+     screen is not prose until the last of its five states. It is now a **run
+     dossier**: a ruled spec sheet of what the run was asked to do, then the
+     six stages as a numbered ledger (`1.0 … 6.0`), then the outcome. The
+     reading column survives untouched inside `.cr-prose`, because when the
+     report exists it IS the page.
      --------------------------------------------------------------------- */
-  /* A ribbon, not a grid: each fact is as wide as the fact, they wrap where
-     they run out of room, and the repository URL takes its own line. There is
-     deliberately no equal-column layout here. */
-  .cr-ribbon {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: var(--space-10);
-    row-gap: var(--space-4);
+
+  /* The spec sheet. A label column and a value column separated by hairlines
+     that run the whole measure — the instrument-panel voice, not a wrap of
+     loose chips. One column below 48rem, where a 11rem label column would
+     leave the values 8 characters wide. */
+  .cr-runsheet {
     margin: 0;
-    padding-top: var(--space-4);
     border-block-start: 1px solid var(--color-rule-strong);
   }
-  .cr-ribbon__item {
+  .cr-runsheet__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1) var(--space-6);
+    padding-block: var(--space-3);
+    border-block-end: 1px solid var(--color-rule);
     min-inline-size: 0;
-    max-inline-size: 100%;
   }
-  .cr-ribbon__item--wide {
-    flex-basis: 100%;
+  @media (min-width: 48rem) {
+    .cr-runsheet__row {
+      grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+      align-items: baseline;
+    }
   }
 
   /* A determinate bar. It moves when the server says a stage changed and at no
-     other time — no indeterminate shimmer, no fake creep. */
+     other time — no indeterminate shimmer, no fake creep. Kept hand-rolled at
+     TASK-013: Mantine's `Progress` hard-codes `aria-valuemax=100` and an
+     `aria-valuetext` of "<percent>%", which would replace this screen's
+     six-stage accessible value with an untranslated percentage. */
   .cr-progress {
     block-size: 4px;
     inline-size: 100%;
@@ -474,18 +428,23 @@
     transition: inline-size var(--dur-base) var(--ease-out);
   }
 
+  /* The stage ledger. Numbered left margin (`1.0 …`), then icon + stage, then
+     the state word hard right. Rows are ruled rather than gapped, so the six
+     stages read as one instrument reading out and not as six floating lines.
+     The number column is `4ch` — sized to `6.0` plus its own tracking. */
   .cr-stages {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
     margin: 0;
     padding: 0;
     list-style: none;
+    border-block-start: 1px solid var(--color-rule);
   }
   .cr-stages > li {
-    display: flex;
+    display: grid;
+    grid-template-columns: 4ch auto minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--space-3);
+    padding-block: var(--space-3);
+    border-block-end: 1px solid var(--color-rule);
     font-size: 0.9375rem;
     color: var(--color-muted);
   }
@@ -493,16 +452,29 @@
     color: var(--color-ink);
   }
   .cr-stages > li[data-state="current"] {
-    color: var(--color-accent);
+    color: var(--color-ink);
     font-weight: 600;
   }
   .cr-stages > li[data-state="pending"] svg {
     color: var(--color-neutral);
   }
-  .cr-stages__state {
-    margin-inline-start: auto;
+  /* The one accent on the ledger, and it is spent on the row the run is
+     actually on. Every other row's number is muted, so the signal is a signal. */
+  .cr-stages__num {
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    color: var(--color-neutral);
+  }
+  .cr-stages > li[data-state="current"] .cr-stages__num {
+    color: var(--color-accent);
+  }
+  .cr-stages__state {
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-align: end;
     color: var(--color-muted);
   }
 
@@ -671,7 +643,6 @@
   .cr-spinner {
     animation: none;
   }
-  .cr-btn,
   .cr-progress > span,
   /* Mantine's own input transition — the elements that carried the two
      hand-rolled rules removed above (TASK-012). */

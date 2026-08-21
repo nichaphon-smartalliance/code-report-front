@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Group, Text, Title } from "@mantine/core";
 import { WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { MessageKey } from "@/constant/text";
@@ -10,18 +11,34 @@ import { formatIsoDate } from "@/lib/format";
 import { writeRetryParams } from "@/lib/storage/retryParams";
 import type { ReportJob } from "@/types/api/main";
 import { ReportResult } from "./ReportResult";
+import { HEADING_SIZE } from "./ReportView.config";
 
 /**
- * The report view (TASK-008 / SPEC-001 "Frontend" 3).
+ * The report view (TASK-008 / SPEC-001 "Frontend" 3), rebuilt Mantine-first and
+ * redesigned by TASK-013 in the cobalt register.
  *
  * Structure note (FRONTEND-STANDARD §3.1): a **third** shape, deliberately
- * neither of the first two. Login is a narrow left-biased column; the new-report
- * form is an asymmetric fields+rail worksheet. This is a document: a wide run
- * ribbon of hairline-separated facts across the top, and one reading column
- * under it at a text measure. No rail, no card, no second column.
+ * neither of the other two. Login is a masthead + form diptych; the new-report
+ * form is an asymmetric fields+rail workbench. This is a **run dossier**
+ * (hallmark macrostructure *Narrative Workflow*): a ruled spec sheet of what the
+ * run was asked to do, then the six stages as a numbered ledger, then the
+ * outcome. No rail, no card, no second column.
+ *
+ * What the redesign changed. The facts were a wrap-ribbon of loose label/value
+ * chips and the screen as a whole was a *document* — which is the one
+ * macrostructure this theme explicitly refuses, and it was also untrue four
+ * fifths of the time: the page is prose only in its final state. The facts are
+ * now a hairline-ruled label/value sheet at the instrument-panel voice, the
+ * heading carries the cobalt signal tick the other two screens carry, and the
+ * stages are numbered `1.0 … 6.0` with the accent spent on exactly one row —
+ * the one the run is on.
+ *
+ * NO COPY CHANGED. Every string is the one the dictionary already held
+ * (freeze item 10 / Q14); the stage numerals are derived from the position of
+ * `REPORT_STAGES`, not from a new dictionary key.
  *
  * TASK-010 shed the outcome area into `ReportResult` and the stage display into
- * `ReportProgress`; the ribbon and the polling wiring stay here.
+ * `ReportProgress`; the sheet and the polling wiring stay here.
  *
  * There is **no list of past runs** here and nowhere else in the app — no
  * history, no "recent reports" (REQ-001 §12).
@@ -46,40 +63,53 @@ export function ReportViewContent({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div>
-      <h1 className="m-0 font-display text-2xl font-semibold text-ink">
-        {t("reports.view.heading")}
-      </h1>
+    <Box>
+      <Group gap="var(--space-3)" wrap="nowrap" align="center">
+        {/* The same 0.85em tick the shell header, the login masthead and the
+            new-report head carry — carrying the heading's own size here keeps
+            it cut to the cap height across the whole clamp. */}
+        <Box component="span" className="cr-tick" fz={HEADING_SIZE} aria-hidden="true" />
+        <Title order={1} className="m-0" fz={HEADING_SIZE} fw={600} lh={1.15} c="var(--color-ink)">
+          {t("reports.view.heading")}
+        </Title>
+      </Group>
 
-      {job ? <RunRibbon job={job} /> : null}
+      {job ? <RunSheet job={job} /> : null}
 
       {offline ? (
-        <p role="status" className="m-0 mt-6 flex items-start gap-2 text-sm text-muted">
-          <WifiOff size={16} className="mt-1 shrink-0" aria-hidden="true" />
+        // The same notice object login and the new-report form use: a hairline
+        // all the way round, an icon and words beside the surface — never a
+        // colour on its own, and never a thick coloured left stripe.
+        <Text component="p" role="status" className="cr-notice mt-6">
+          <WifiOff size={16} className="cr-notice__icon" aria-hidden="true" />
           <span>{t("reports.view.offline")}</span>
-        </p>
+        </Text>
       ) : null}
 
-      <div className="mt-8">
+      <Box className="mt-8">
         <ReportResult
           job={job}
           loadError={loadError}
           polling={polling}
           onTryAgain={handleTryAgain}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
-/* --------------------------------------------------------------- ribbon --- */
+/* ----------------------------------------------------------------- sheet --- */
 
 /**
  * What this run was asked to do, so the reader knows what they are looking at
  * (TASK-008 item 6). Values the user did not supply render as a labelled `—`;
  * nothing here is invented. **`pat` is not in the response and is not shown.**
+ *
+ * The repository URL is the first row rather than a spanning one: in a ruled
+ * sheet the long value simply takes the height it needs, so the ribbon's
+ * `--wide` special case has nothing left to solve.
  */
-function RunRibbon({ job }: { job: ReportJob }) {
+function RunSheet({ job }: { job: ReportJob }) {
   const { t } = useI18n();
   const from = formatIsoDate(job.params.dateFrom);
   const to = formatIsoDate(job.params.dateTo);
@@ -87,8 +117,8 @@ function RunRibbon({ job }: { job: ReportJob }) {
     from === null ? null : to === null || to === from ? from : `${from} – ${to}`;
 
   return (
-    <dl className="cr-ribbon mt-6">
-      <Fact label={t("reports.view.params.repo")} value={job.params.repoUrl} mono wide />
+    <Box component="dl" className="cr-runsheet mt-6">
+      <Fact label={t("reports.view.params.repo")} value={job.params.repoUrl} mono />
       <Fact label={t("reports.view.params.period")} value={period} mono />
       <Fact label={t("reports.view.params.branch")} value={job.params.branch ?? ""} mono />
       <Fact label={t("reports.view.params.author")} value={job.params.author ?? ""} mono />
@@ -103,33 +133,38 @@ function RunRibbon({ job }: { job: ReportJob }) {
         }
         mono
       />
-    </dl>
+    </Box>
   );
 }
 
-function Fact({
-  label,
-  value,
-  mono = false,
-  wide = false,
-}: {
-  label: string;
-  value: string | null;
-  mono?: boolean;
-  wide?: boolean;
-}) {
+function Fact({ label, value, mono = false }: { label: string; value: string | null; mono?: boolean }) {
   const { t } = useI18n();
   const empty = value === null || value.trim() === "";
   return (
-    <div className={wide ? "cr-ribbon__item cr-ribbon__item--wide" : "cr-ribbon__item"}>
-      <dt className="m-0 text-xs text-muted">{label}</dt>
-      <dd
-        className={`cr-nums m-0 mt-1 break-words text-sm ${mono ? "font-mono" : "font-body"} ${
-          empty ? "text-muted" : "text-ink"
-        }`}
+    <Box className="cr-runsheet__row">
+      {/* The label column is the machine-readout voice: mono, small, tracked
+          out, and the same object on every row (cobalt's "mono labels"). */}
+      <Text
+        component="dt"
+        className="m-0"
+        ff="monospace"
+        fz="0.75rem"
+        lh={1.5}
+        c="var(--color-muted)"
+        style={{ letterSpacing: "0.06em" }}
+      >
+        {label}
+      </Text>
+      <Text
+        component="dd"
+        className="cr-nums m-0 break-words"
+        ff={mono ? "monospace" : undefined}
+        fz="0.875rem"
+        lh={1.5}
+        c={empty ? "var(--color-muted)" : "var(--color-ink)"}
       >
         {empty ? t("reports.view.params.empty") : value}
-      </dd>
-    </div>
+      </Text>
+    </Box>
   );
 }

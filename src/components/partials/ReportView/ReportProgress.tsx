@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Text, Title } from "@mantine/core";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import type { MessageKey } from "@/constant/text";
 import { useI18n } from "@/context/i18n";
@@ -7,11 +8,18 @@ import { REPORT_STAGES, type ReportJob, type ReportStage } from "@/types/api/mai
 import type { StageState } from "./ReportView.config";
 
 /**
- * QUEUED / RUNNING (TASK-008 item 2). Restraint over motion: the stage list is
- * simply there, the bar moves only when the server says a stage changed, and
- * the one spinning thing on screen is the 14px spinner already in the system.
+ * QUEUED / RUNNING (TASK-008 item 2), redesigned by TASK-013 as the dossier's
+ * **stage ledger**: the six stages numbered `1.0 … 6.0` down a mono left
+ * margin, ruled rather than gapped, with the state word hard right.
  *
- * Shed out of `ReportView.tsx` by TASK-010 — markup and logic moved verbatim.
+ * Restraint over motion is unchanged and is the reason the ledger looks like
+ * this: the bar moves only when the server says a stage changed, the numerals
+ * are static, and the one spinning thing on screen is still the 14px spinner
+ * already in the system. The stage numerals are positions in `REPORT_STAGES` —
+ * no dictionary key was added (freeze item 10).
+ *
+ * Shed out of `ReportView.tsx` by TASK-010; the six-stage logic below is
+ * unchanged by the redesign.
  */
 export function ReportProgress({ job, busy }: { job: ReportJob; busy: boolean }) {
   const { t } = useI18n();
@@ -20,17 +28,35 @@ export function ReportProgress({ job, busy }: { job: ReportJob; busy: boolean })
   const current = job.progress?.current ?? (currentIndex >= 0 ? currentIndex + 1 : 0);
 
   return (
-    <section>
-      <h2 className="m-0 flex items-center gap-3 font-display text-lg font-semibold text-ink">
-        {busy ? <span className="cr-spinner text-accent" aria-hidden="true" /> : null}
+    <Box component="section">
+      <Title
+        order={2}
+        className="m-0 flex items-center gap-3"
+        fz="1.125rem"
+        fw={600}
+        c="var(--color-ink)"
+      >
+        {busy ? (
+          <Box component="span" className="cr-spinner" c="var(--color-accent)" aria-hidden="true" />
+        ) : null}
         {t("reports.view.running.title")}
-      </h2>
-      <p className="m-0 mt-2 text-sm text-muted">{t("reports.view.running.hint")}</p>
+      </Title>
+      <Text component="p" className="m-0 mt-2" fz="0.875rem" c="var(--color-muted)">
+        {t("reports.view.running.hint")}
+      </Text>
 
-      <p className="cr-nums m-0 mt-6 font-mono text-xs text-muted" aria-live="polite">
+      <Text
+        component="p"
+        className="cr-nums m-0 mt-6"
+        ff="monospace"
+        fz="0.75rem"
+        c="var(--color-muted)"
+        style={{ letterSpacing: "0.06em" }}
+        aria-live="polite"
+      >
         {t("reports.view.progress.step")} {current} / {total}
-      </p>
-      <div
+      </Text>
+      <Box
         className="cr-progress mt-2"
         role="progressbar"
         aria-valuemin={0}
@@ -39,13 +65,14 @@ export function ReportProgress({ job, busy }: { job: ReportJob; busy: boolean })
         aria-label={t("reports.view.running.title")}
       >
         <span style={{ inlineSize: `${total > 0 ? (current / total) * 100 : 0}%` }} />
-      </div>
+      </Box>
 
-      <ol className="cr-stages mt-6">
+      <Box component="ol" className="cr-stages mt-6">
         {REPORT_STAGES.map((stage, index) => (
           <StageRow
             key={stage}
             stage={stage}
+            index={index}
             state={
               currentIndex < 0
                 ? "pending"
@@ -57,15 +84,28 @@ export function ReportProgress({ job, busy }: { job: ReportJob; busy: boolean })
             }
           />
         ))}
-      </ol>
-    </section>
+      </Box>
+    </Box>
   );
 }
 
-function StageRow({ stage, state }: { stage: ReportStage; state: StageState }) {
+function StageRow({
+  stage,
+  index,
+  state,
+}: {
+  stage: ReportStage;
+  index: number;
+  state: StageState;
+}) {
   const { t } = useI18n();
   return (
     <li data-state={state}>
+      {/* The stage's position, in the numbered-workflow voice. It is a numeral,
+          not copy: `1.0` reads the same in both languages and needs no key. */}
+      <span className="cr-stages__num" aria-hidden="true">
+        {index + 1}.0
+      </span>
       {/* State is never carried by colour alone: an icon and a word carry it too. */}
       {state === "done" ? (
         <Check size={16} aria-hidden="true" />
