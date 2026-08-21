@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Button, Text } from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
@@ -24,14 +25,23 @@ import { NewReportFields } from "./NewReportFields";
 import { NewReportHeader } from "./NewReportHeader";
 
 /**
- * The new-report form (TASK-007 / SPEC-001 "Frontend" 2).
+ * The new-report form (TASK-007 / SPEC-001 "Frontend" 2), rebuilt Mantine-first
+ * and redesigned by TASK-012 in the cobalt register.
  *
  * Structure note (FRONTEND-STANDARD §3.1): this screen is deliberately NOT the
- * login screen's shape. Login is one narrow left-biased column; this is an
- * asymmetric two-column working surface — four labelled groups of unequal
- * density on the left, a narrow run rail on the right that echoes the period
- * and carries the submit. It collapses to one column below `lg`. There is no
- * three-equal-column grid, no card wrapping the fields, and no section eyebrow.
+ * login screen's shape. Login is a masthead + form diptych; this is a
+ * **workbench** — an asymmetric working surface whose left column is a sheet of
+ * four sections separated by hairlines that run the field measure, and whose
+ * right column is one bordered run panel carrying the period readout and the
+ * submit. It collapses to one column below `lg`. There is no three-equal-column
+ * grid, no card wrapping the fields (the panel is the page's only contained
+ * object, so there is no card-in-card), and no section eyebrow.
+ *
+ * What the redesign changed, beyond the control layer: the four sections were
+ * four free-floating headings on one repeated `mb-10`; they are now ruled, and
+ * their internal density varies with what the section is for. The rail was a
+ * borderless top-ruled column; it is now a hairline-bordered panel whose period
+ * is a mono tabular readout rather than another line of body text.
  *
  * TASK-010 shed the heading into `NewReportHeader` and the field column into
  * `NewReportFields`; the state, the validation and the submit stay here.
@@ -55,16 +65,9 @@ export function NewReportContent() {
   const { t, language } = useI18n();
   const router = useRouter();
 
-  const ids = {
-    repoUrl: useId(),
-    pat: useId(),
-    dateFrom: useId(),
-    dateTo: useId(),
-    branch: useId(),
-    author: useId(),
-    extraContext: useId(),
-    formError: useId(),
-  };
+  // The only id this screen still mints by hand. Every per-field id came from
+  // the hand-rolled `Field` primitive and is Mantine's job now (TASK-012).
+  const formErrorId = useId();
 
   const [repoUrl, setRepoUrl] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -210,10 +213,9 @@ export function NewReportContent() {
     <form onSubmit={handleSubmit} noValidate>
       <NewReportHeader />
 
-      <div className="cr-worksheet mt-8">
+      <Box className="cr-worksheet mt-8">
         {/* ------------------------------------------------------- fields --- */}
         <NewReportFields
-          ids={ids}
           busy={busy}
           fieldErrors={fieldErrors}
           repoUrl={repoUrl}
@@ -240,16 +242,35 @@ export function NewReportContent() {
           counterOver={counterOver}
         />
 
-        {/* --------------------------------------------------- the run rail --- */}
-        <aside className="min-w-0 lg:sticky lg:top-10 lg:self-start">
-          <div className="border-0 border-t border-solid border-t-rule-strong pt-4">
-            <h2 className="m-0 font-body text-sm font-semibold tracking-wide text-muted">
+        {/* -------------------------------------------------- the run panel --- */}
+        <Box component="aside" className="min-w-0 lg:sticky lg:top-10 lg:self-start">
+          <Box className="cr-runpanel">
+            <Text
+              component="h2"
+              className="m-0"
+              fz="0.8125rem"
+              fw={600}
+              c="var(--color-muted)"
+              style={{ letterSpacing: "0.01em" }}
+            >
               {t("reports.new.summary.heading")}
-            </h2>
+            </Text>
 
-            <dl className="m-0 mt-4">
-              <dt className="m-0 text-xs text-muted">{t("reports.new.summary.period")}</dt>
-              <dd className="cr-nums m-0 mt-1 font-mono text-sm text-ink">
+            {/* The period is the one fact this panel exists to show, so it is
+                set as a machine readout — mono, tabular, promoted in size —
+                rather than as another line of body text. */}
+            <Box component="dl" className="m-0 mt-4">
+              <Text component="dt" className="m-0" fz="0.75rem" c="var(--color-muted)">
+                {t("reports.new.summary.period")}
+              </Text>
+              <Text
+                component="dd"
+                className="cr-nums m-0 mt-2"
+                ff="monospace"
+                fz="1.125rem"
+                lh={1.35}
+                c="var(--color-ink)"
+              >
                 {fromDisplay === null
                   ? t("reports.new.summary.empty")
                   : mode === "day" || fromDisplay === toDisplay
@@ -257,19 +278,22 @@ export function NewReportContent() {
                     : toDisplay === null
                       ? fromDisplay
                       : `${fromDisplay} – ${toDisplay}`}
-              </dd>
-            </dl>
+              </Text>
+            </Box>
 
             {formError ? (
-              <p
-                id={ids.formError}
+              // The same notice object the login screen uses: a hairline all the
+              // way round, never a thick coloured left stripe (the TASK-011
+              // audit's first critical). Icon and words carry the state too.
+              <Text
+                component="p"
+                id={formErrorId}
                 role="alert"
-                className="m-0 mt-5 flex items-start gap-2 rounded border border-solid border-danger bg-danger-soft px-4 py-3 text-sm text-danger"
+                className="cr-notice cr-notice--danger mt-5"
               >
-                {/* Never colour alone — icon and words carry the state too. */}
-                <AlertTriangle size={16} className="mt-1 shrink-0" aria-hidden="true" />
+                <AlertTriangle size={16} className="cr-notice__icon" aria-hidden="true" />
                 <span>
-                  <strong className="font-semibold">{t("reports.new.errorTitle")}</strong>
+                  <strong>{t("reports.new.errorTitle")}</strong>
                   {" — "}
                   {formError}
                   {orphanErrors.map((message) => (
@@ -278,27 +302,27 @@ export function NewReportContent() {
                     </span>
                   ))}
                 </span>
-              </p>
+              </Text>
             ) : null}
 
-            <button
+            <Button
               type="submit"
-              className="cr-btn cr-btn--primary mt-5 w-full"
+              className="mt-5"
+              color={phase === "error" ? "danger" : phase === "success" ? "success" : "accent"}
+              fullWidth
               // Stays disabled through `success` as well: `router.replace` is
               // async, and a second click in that window would start a SECOND
               // job — tokenless, because the PAT has just been cleared
               // (Sober's TASK-007 review, minor 2).
               disabled={busy || phase === "success" || counterOver}
-              data-loading={busy ? "true" : undefined}
-              data-state={phase === "error" || phase === "success" ? phase : undefined}
-              aria-describedby={formError ? ids.formError : undefined}
+              loading={showSpinner}
+              aria-describedby={formError ? formErrorId : undefined}
             >
-              {showSpinner ? <span className="cr-spinner" aria-hidden="true" /> : null}
               {busy ? t("reports.new.submitting") : t("reports.new.submit")}
-            </button>
-          </div>
-        </aside>
-      </div>
+            </Button>
+          </Box>
+        </Box>
+      </Box>
     </form>
   );
 }

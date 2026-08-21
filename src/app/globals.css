@@ -134,11 +134,6 @@
      transitions it. A keyboard user sees it on frame one.
      --------------------------------------------------------------------- */
   .cr-focus:focus-visible,
-  .cr-field input:focus-visible,
-  .cr-field textarea:focus-visible,
-  /* A bare checkbox matches none of the other selectors here, so without this
-     line it silently fell back to the browser's own 1px auto ring. */
-  .cr-check input:focus-visible,
   button:focus-visible,
   a:focus-visible,
   [role="button"]:focus-visible,
@@ -316,168 +311,17 @@
   }
 
   /* ---------------------------------------------------------------------
-     Fields. Same eight states; the border carries the state, and error also
-     carries an icon + words (never colour alone).
+     What used to live here: `.cr-field`, `.cr-check` and `.cr-segmented` —
+     the hand-rolled input / checkbox / radio-group styles TASK-007 wrote for
+     the new-report screen. TASK-012 rebuilt that screen out of `@mantine/core`,
+     which left all three with no element to style. They are removed rather
+     than kept as dead rules that a later edit could reattach.
+
+     Their eight-state discipline did not go anywhere: it lives in
+     `src/lib/theme.ts` (control height, the accent/danger/success palettes,
+     the semantic-variable resolver), in the focus-ring rule above, and in the
+     two hover states Mantine does not ship, at the bottom of this file.
      --------------------------------------------------------------------- */
-  .cr-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .cr-field > label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--color-muted);
-  }
-  .cr-field input {
-    width: 100%;
-    min-height: 44px;
-    padding-inline: var(--space-3);
-    border: 1px solid var(--color-rule-strong);
-    border-radius: var(--radius-md);
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    transition:
-      border-color var(--dur-short) var(--ease-out),
-      background-color var(--dur-short) var(--ease-out);
-  }
-  .cr-field input::placeholder {
-    color: var(--color-muted);
-  }
-  .cr-field input:hover:not(:disabled) {
-    border-color: var(--color-ink);
-  }
-  .cr-field input:active:not(:disabled) {
-    border-color: var(--color-ink);
-  }
-  .cr-field input:disabled {
-    background-color: var(--color-paper-3);
-    color: var(--color-neutral);
-    cursor: not-allowed;
-  }
-  .cr-field[data-state="loading"] input {
-    background-color: var(--color-paper-2);
-  }
-  .cr-field[data-state="error"] input {
-    border-color: var(--color-danger);
-    background-color: var(--color-danger-soft);
-  }
-  .cr-field[data-state="success"] input {
-    border-color: var(--color-success);
-  }
-
-  /* The extra-context textarea. Same border/state language as an input; it just
-     grows vertically and is the one control here the user may resize. */
-  .cr-field textarea {
-    width: 100%;
-    min-height: 7.5rem;
-    padding: var(--space-3);
-    border: 1px solid var(--color-rule-strong);
-    border-radius: var(--radius-md);
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    font: inherit;
-    line-height: 1.55;
-    resize: vertical;
-    transition:
-      border-color var(--dur-short) var(--ease-out),
-      background-color var(--dur-short) var(--ease-out);
-  }
-  .cr-field textarea::placeholder {
-    color: var(--color-muted);
-  }
-  .cr-field textarea:hover:not(:disabled) {
-    border-color: var(--color-ink);
-  }
-  .cr-field textarea:disabled {
-    background-color: var(--color-paper-3);
-    color: var(--color-neutral);
-    cursor: not-allowed;
-  }
-  .cr-field[data-state="error"] textarea {
-    border-color: var(--color-danger);
-    background-color: var(--color-danger-soft);
-  }
-
-  /* The "private repository" checkbox. A real <input type=checkbox> inside its
-     own label, so tap, click, Space and screen readers all work with no JS. */
-  .cr-check {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-3);
-    /* the whole row is the hit target, not just the 18px box */
-    min-height: 44px;
-    padding-inline: var(--space-1);
-    font-size: 0.9375rem;
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-  .cr-check input {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    accent-color: var(--color-accent);
-    cursor: pointer;
-  }
-  .cr-check:hover {
-    color: var(--color-accent-strong);
-  }
-
-  /* ---------------------------------------------------------------------
-     The language switch: two real radio inputs, so it works on tap and on
-     keyboard with arrow keys. No hover-only affordance anywhere in the shell.
-     --------------------------------------------------------------------- */
-  .cr-segmented {
-    display: inline-flex;
-    border: 1px solid var(--color-rule-strong);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-  .cr-segmented label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    /* 44px on both axes — the language switch is a primary tap target on a
-       phone, and a 36px-tall segment fails the hit-target floor. */
-    min-width: 44px;
-    min-height: 44px;
-    padding-inline: var(--space-2);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--color-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--dur-short) var(--ease-out),
-      color var(--dur-short) var(--ease-out);
-  }
-  .cr-segmented label:hover {
-    background-color: var(--color-paper-3);
-    color: var(--color-ink);
-  }
-  .cr-segmented input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-  }
-  .cr-segmented input:checked + span {
-    background-color: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
-  .cr-segmented input:focus-visible + span {
-    outline: 2px solid var(--color-accent-ring);
-    outline-offset: -2px;
-  }
-  .cr-segmented span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding-inline: var(--space-3);
-  }
-
   /* Mantine's segmented control ships a 200ms `ease` slide. Our motion rule is
      exponential ease-out only, so the two transition variables are re-pointed
      at our tokens on the element itself (TASK-011). */
@@ -486,21 +330,31 @@
     --sc-transition-timing-function: var(--ease-out);
   }
 
-  /* A <legend> for a radio group, typographically identical to a field label
-     so a segmented control and a text input read as the same kind of thing.
+  /* A <legend> for a radio group, typographically identical to a field label so
+     a segmented control and a text input read as the same kind of thing.
      Declared here rather than as an arbitrary Tailwind value at each call site
-     (FRONTEND-STANDARD §3 item 5). */
+     (FRONTEND-STANDARD §3 item 5).
+
+     TASK-012: it now points at the SAME properties Mantine's own
+     `InputWrapper-label` reads, instead of restating the hand-rolled 13px/muted
+     voice `.cr-field > label` used before Mantine arrived. Measured on the built
+     page, the two had drifted apart — 16px ink beside 13px muted on one sheet —
+     and pointing rather than copying is what stops them drifting again. */
   .cr-legend {
+    display: block;
     padding: 0;
-    font-size: 0.8125rem;
+    font-size: var(--mantine-font-size-md);
     font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--color-muted);
+    color: var(--mantine-color-text);
   }
 
-  /* The new-report worksheet: one column on a phone, an asymmetric
-     fields + run-rail pair from 64rem up. Deliberately NOT three equal
-     columns, and the rail is narrower than the fields, never a match. */
+  /* ---------------------------------------------------------------------
+     The new-report workbench (TASK-007 shape, redesigned by TASK-012).
+
+     One column on a phone, an asymmetric sheet + run-panel pair from 64rem up.
+     Deliberately NOT three equal columns, and the panel is narrower than the
+     sheet, never a match.
+     --------------------------------------------------------------------- */
   .cr-worksheet {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -511,6 +365,67 @@
       grid-template-columns: minmax(0, 1fr) 17rem;
       gap: var(--space-12);
     }
+  }
+
+  /* The screen head. The heading sits on a hairline that runs the whole working
+     measure, so the sheet below starts against a drawn edge. */
+  .cr-sheet__head {
+    padding-block-end: var(--space-5);
+    border-block-end: 1px solid var(--color-rule);
+  }
+
+  /* A section of the sheet. TASK-007 gave all four an identical `mb-10` and no
+     divider; they are now ruled, and the rule runs the field measure — cobalt's
+     "hairlines do the work". The heading always sits in the same column as its
+     content (never a tag-left / header-right two-column section head). */
+  .cr-sheet__section {
+    margin-block-start: var(--space-8);
+    padding-block-start: var(--space-6);
+    border-block-start: 1px solid var(--color-rule);
+  }
+  .cr-sheet__section:first-child {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+
+  /* Density varies with what a section is for: the required repository block
+     breathes, the optional filters are the tightest thing on the page. It is
+     deliberately not one gap value repeated four times. */
+  .cr-sheet__fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .cr-sheet__fields--airy {
+    gap: var(--space-6);
+  }
+  .cr-sheet__fields--tight {
+    gap: var(--space-4);
+  }
+
+  /* An inline field error: the icon and the words carry the state with the
+     colour, never the colour alone. Handed to Mantine's `error` slot. */
+  .cr-fielderror {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-danger);
+  }
+  .cr-fielderror__icon {
+    flex-shrink: 0;
+    margin-block-start: 0.15rem;
+  }
+
+  /* The run panel — the page's ONE contained object, so there is no card in a
+     card. A hairline all round on a raised surface and no shadow at all: in
+     this theme depth comes from borders, not from blur. */
+  .cr-runpanel {
+    padding: var(--space-5);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-paper-2);
   }
 
   /* Numerals in dates, times, counts and durations always align. */
@@ -757,10 +672,10 @@
     animation: none;
   }
   .cr-btn,
-  .cr-field input,
-  .cr-field textarea,
-  .cr-segmented label,
-  .cr-progress > span {
+  .cr-progress > span,
+  /* Mantine's own input transition — the elements that carried the two
+     hand-rolled rules removed above (TASK-012). */
+  .mantine-Input-input {
     transition: none;
   }
   .cr-seg {

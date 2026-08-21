@@ -10,6 +10,23 @@ export const MAX_SPAN_DAYS = 366;
 export type Mode = "day" | "range";
 export type Phase = "idle" | "submitting" | "error" | "success";
 
+export function isMode(value: string): value is Mode {
+  return value === "day" || value === "range";
+}
+
+/**
+ * Where Mantine's `Input.Wrapper` puts each slot. Mantine's own default is
+ * label → description → input → error; TASK-007's markup put the hint (and the
+ * error that replaces it) UNDER the control, so the order is stated explicitly
+ * rather than the screen silently moving every hint line (TASK-012).
+ */
+export const FIELD_WRAPPER_ORDER: ("label" | "input" | "description" | "error")[] = [
+  "label",
+  "input",
+  "description",
+  "error",
+];
+
 /** The POST body's own field names — what a `VALIDATION_ERROR.fields` map keys on. */
 export const FIELD_NAMES = [
   "repoUrl",
@@ -28,13 +45,9 @@ export function isFieldName(value: string): value is FieldName {
   return (FIELD_NAMES as readonly string[]).includes(value);
 }
 
-/** The ids the form's controls point `htmlFor` / `aria-describedby` at. */
-export type FieldIds = {
-  repoUrl: string;
-  pat: string;
-  dateFrom: string;
-  dateTo: string;
-  branch: string;
-  author: string;
-  extraContext: string;
-};
+/*
+ * `FieldIds` lived here until TASK-012. It existed so the hand-rolled `Field`
+ * primitive could wire `htmlFor` / `aria-describedby` / the error id by hand.
+ * Mantine's `Input.Wrapper` owns all three now, so the type had no reader left
+ * and was removed with the controls that needed it.
+ */

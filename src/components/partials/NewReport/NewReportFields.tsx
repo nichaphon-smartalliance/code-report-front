@@ -1,24 +1,48 @@
 "use client";
 
+import {
+  Box,
+  Checkbox,
+  Group,
+  SegmentedControl,
+  Text,
+  Textarea,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { AlertTriangle } from "lucide-react";
 import { LANGUAGES, type Language, type MessageKey } from "@/constant/text";
 import { useI18n } from "@/context/i18n";
 import {
   EXTRA_CONTEXT_MAX,
+  FIELD_WRAPPER_ORDER,
+  isMode,
   type FieldErrors,
-  type FieldIds,
   type Mode,
 } from "./NewReport.config";
 
 /**
- * The form's field column. Shed out of `NewReportForm.tsx` by TASK-010: the
- * JSX, the classes, the comments and the three local primitives below moved
- * verbatim, and the state they read is now handed in as props instead of being
- * closed over. No control, attribute or copy key was changed.
+ * The form's field column, rebuilt Mantine-first and redesigned by TASK-012 in
+ * the cobalt register the shell and login already speak.
+ *
+ * Every control is now a `@mantine/core` component — no native input, select,
+ * textarea, label or button element is written on this screen at all
+ * (SPEC-002 Decision 3 rule 2). The three local primitives TASK-010 moved here
+ * (`Field`, `FieldError`, `describedBy`) are gone with the native controls they
+ * wrapped: Mantine's `Input.Wrapper` owns the label/description/error slots and
+ * their `aria-describedby` wiring, so re-implementing them would be a second
+ * system.
+ *
+ * NO COPY CHANGED. Every string is the key the dictionary already held (Q14
+ * closed the copy bundle), every field is the field that was here before, and
+ * the values they carry are unchanged — see the TASK's freeze walk.
+ *
+ * The one deliberate a11y carry-over: an error line is announced, so the error
+ * node passed to Mantine carries `role="alert"` and an icon. Danger is never
+ * hue alone.
  */
 
 export type NewReportFieldsProps = {
-  ids: FieldIds;
   busy: boolean;
   fieldErrors: FieldErrors;
   repoUrl: string;
@@ -46,7 +70,6 @@ export type NewReportFieldsProps = {
 };
 
 export function NewReportFields({
-  ids,
   busy,
   fieldErrors,
   repoUrl,
@@ -75,266 +98,304 @@ export function NewReportFields({
   const { t } = useI18n();
 
   return (
-    <div className="min-w-0">
-      <Group title={t("reports.new.section.repository")}>
-        <Field id={ids.repoUrl} label={t("reports.new.repoUrl")} error={fieldErrors.repoUrl} hint={null}>
-          <input
-            id={ids.repoUrl}
+    <Box className="min-w-0">
+      {/* ------------------------------------------------------ repository --- */}
+      <Section title={t("reports.new.section.repository")}>
+        <Box className="cr-sheet__fields cr-sheet__fields--airy">
+          <TextInput
             name="repoUrl"
             type="url"
             inputMode="url"
+            label={t("reports.new.repoUrl")}
+            placeholder={t("reports.new.repoUrl.placeholder")}
             autoComplete="off"
             spellCheck={false}
-            placeholder={t("reports.new.repoUrl.placeholder")}
             required
+            withAsterisk={false}
             disabled={busy}
             value={repoUrl}
-            onChange={(event) => onRepoUrlChange(event.target.value)}
-            aria-invalid={fieldErrors.repoUrl !== undefined}
-            aria-describedby={describedBy(ids.repoUrl, fieldErrors.repoUrl, false)}
+            onChange={(event) => onRepoUrlChange(event.currentTarget.value)}
+            error={fieldError(fieldErrors.repoUrl)}
+            inputWrapperOrder={FIELD_WRAPPER_ORDER}
           />
-        </Field>
 
-        <label className="cr-check">
-          <input
-            type="checkbox"
-            name="private"
-            disabled={busy}
-            checked={isPrivate}
-            onChange={(event) => {
-              onIsPrivateChange(event.target.checked);
-              // Turning the toggle off drops the token immediately rather
-              // than leaving it in state where a later submit could send it.
-              if (!event.target.checked) onPatChange("");
-            }}
-          />
-          {t("reports.new.private")}
-        </label>
+          {/* The whole label row is the hit target, not just the 20px box —
+              measured, because a bare Mantine `Checkbox` gives a 20px target
+              and the floor is 44 (FRONTEND-STANDARD §3 gate 2). The old
+              hand-rolled `.cr-check` did this by making the row the label; the
+              same move, expressed through Mantine's own Styles API. */}
+          <Group>
+            <Checkbox
+              name="private"
+              label={t("reports.new.private")}
+              styles={{
+                body: { alignItems: "center" },
+                label: {
+                  display: "flex",
+                  alignItems: "center",
+                  minHeight: "var(--control-h)",
+                  cursor: "pointer",
+                },
+                input: { cursor: "pointer" },
+              }}
+              disabled={busy}
+              checked={isPrivate}
+              onChange={(event) => {
+                const { checked } = event.currentTarget;
+                onIsPrivateChange(checked);
+                // Turning the toggle off drops the token immediately rather
+                // than leaving it in state where a later submit could send it.
+                if (!checked) onPatChange("");
+              }}
+            />
+          </Group>
 
-        {isPrivate ? (
-          <Field
-            id={ids.pat}
-            label={t("reports.new.pat")}
-            error={fieldErrors.pat}
-            hint={t("reports.new.pat.hint")}
-          >
-            {/*
-              type=password + autoComplete="off": the browser must not offer
-              to remember this, and it is never written to localStorage or
-              sessionStorage — grep this repo, there is no such write.
-            */}
-            <input
-              id={ids.pat}
+          {isPrivate ? (
+            // `TextInput type="password"`, not Mantine's `PasswordInput` — the
+            // same call TASK-011 made on the login screen and Sober upheld
+            // (Q-FE-12): `PasswordInput` forces a reveal toggle SPEC-002 does
+            // not specify, a 28px hit target, and an English-only `aria-label`
+            // baked into the library.
+            // It is never written to localStorage or sessionStorage — grep this
+            // repo, there is no such write.
+            <TextInput
               name="pat"
               type="password"
+              label={t("reports.new.pat")}
+              description={fieldErrors.pat === undefined ? t("reports.new.pat.hint") : undefined}
               autoComplete="off"
               spellCheck={false}
               disabled={busy}
               value={pat}
-              onChange={(event) => onPatChange(event.target.value)}
-              aria-invalid={fieldErrors.pat !== undefined}
-              aria-describedby={describedBy(ids.pat, fieldErrors.pat, true)}
+              onChange={(event) => onPatChange(event.currentTarget.value)}
+              error={fieldError(fieldErrors.pat)}
+              inputWrapperOrder={FIELD_WRAPPER_ORDER}
             />
-          </Field>
-        ) : null}
-      </Group>
+          ) : null}
+        </Box>
+      </Section>
 
-      <Group title={t("reports.new.section.period")}>
-        <fieldset className="m-0 border-0 p-0">
-          <legend className="cr-legend mb-2">{t("reports.new.mode.label")}</legend>
-          <div className="cr-segmented">
-            {(["day", "range"] as const).map((value) => (
-              <label key={value}>
-                <input
-                  type="radio"
-                  name="period-mode"
-                  value={value}
-                  disabled={busy}
-                  checked={mode === value}
-                  onChange={() => onModeChange(value)}
-                />
-                <span>{t(`reports.new.mode.${value}` as MessageKey)}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+      {/* ---------------------------------------------------------- period --- */}
+      <Section title={t("reports.new.section.period")}>
+        <Box className="cr-sheet__fields">
+          <Box component="fieldset" className="m-0 border-0 p-0">
+            <Box component="legend" className="cr-legend mb-2">
+              {t("reports.new.mode.label")}
+            </Box>
+            <SegmentedControl
+              className="cr-seg"
+              name="period-mode"
+              disabled={busy}
+              value={mode}
+              onChange={(value) => {
+                if (isMode(value)) onModeChange(value);
+              }}
+              data={(["day", "range"] as const).map((value) => ({
+                value,
+                label: t(`reports.new.mode.${value}` as MessageKey),
+              }))}
+            />
+          </Box>
 
-        <div className="flex flex-col gap-5 sm:flex-row sm:gap-4">
-          <div className="min-w-0 sm:max-w-date sm:flex-1">
-            <Field
-              id={ids.dateFrom}
-              label={mode === "day" ? t("reports.new.date.day") : t("reports.new.date.from")}
-              error={fieldErrors.dateFrom}
-              hint={t("reports.new.date.hint")}
-            >
+          <Box className="flex flex-col gap-5 sm:flex-row sm:gap-4">
+            <Box className="min-w-0 sm:max-w-date sm:flex-1">
               {/*
-                A native date input: its value IS the `YYYY-MM-DD` we send,
-                so nothing is parsed into a Date and nothing passes through
-                the browser's timezone (TASK-007 item 3).
+                A date input, wearing Mantine's `Input` chrome: its value IS the
+                `YYYY-MM-DD` we send, so nothing is parsed into a Date and
+                nothing passes through the browser's timezone (TASK-007 item 3).
+                On `@mantine/dates` — and why it is not here — see `## Questions`
+                Q-FE-16 in the TASK.
               */}
-              <input
-                id={ids.dateFrom}
+              <TextInput
                 name="dateFrom"
                 type="date"
-                className="cr-nums"
+                classNames={{ input: "cr-nums" }}
+                label={mode === "day" ? t("reports.new.date.day") : t("reports.new.date.from")}
+                description={
+                  fieldErrors.dateFrom === undefined ? t("reports.new.date.hint") : undefined
+                }
                 required
+                withAsterisk={false}
                 disabled={busy}
                 value={dateFrom}
-                onChange={(event) => onDateFromChange(event.target.value)}
-                aria-invalid={fieldErrors.dateFrom !== undefined}
-                aria-describedby={describedBy(ids.dateFrom, fieldErrors.dateFrom, true)}
+                onChange={(event) => onDateFromChange(event.currentTarget.value)}
+                error={fieldError(fieldErrors.dateFrom)}
+                inputWrapperOrder={FIELD_WRAPPER_ORDER}
               />
-            </Field>
-          </div>
+            </Box>
 
-          {mode === "range" ? (
-            <div className="min-w-0 sm:max-w-date sm:flex-1">
-              <Field id={ids.dateTo} label={t("reports.new.date.to")} error={fieldErrors.dateTo} hint={null}>
-                <input
-                  id={ids.dateTo}
+            {mode === "range" ? (
+              <Box className="min-w-0 sm:max-w-date sm:flex-1">
+                <TextInput
                   name="dateTo"
                   type="date"
-                  className="cr-nums"
+                  classNames={{ input: "cr-nums" }}
+                  label={t("reports.new.date.to")}
                   required
+                  withAsterisk={false}
                   disabled={busy}
                   value={dateTo}
-                  onChange={(event) => onDateToChange(event.target.value)}
-                  aria-invalid={fieldErrors.dateTo !== undefined}
-                  aria-describedby={describedBy(ids.dateTo, fieldErrors.dateTo, false)}
+                  onChange={(event) => onDateToChange(event.currentTarget.value)}
+                  error={fieldError(fieldErrors.dateTo)}
+                  inputWrapperOrder={FIELD_WRAPPER_ORDER}
                 />
-              </Field>
-            </div>
+              </Box>
+            ) : null}
+          </Box>
+
+          {/* In single-day mode the range error has no field of its own. */}
+          {mode === "day" && fieldErrors.dateTo ? (
+            <Text component="p" className="cr-fielderror" role="alert">
+              <AlertTriangle size={14} className="cr-fielderror__icon" aria-hidden="true" />
+              <span>{fieldErrors.dateTo}</span>
+            </Text>
           ) : null}
-        </div>
+        </Box>
+      </Section>
 
-        {/* In single-day mode the range error has no field of its own. */}
-        {mode === "day" && fieldErrors.dateTo ? (
-          <FieldError id={`${ids.dateTo}-error`} message={fieldErrors.dateTo} />
-        ) : null}
-      </Group>
-
-      <Group title={t("reports.new.section.filters")} optionalLabel={t("common.optional")}>
-        <div className="flex flex-col gap-5 sm:flex-row sm:gap-4">
-          <div className="min-w-0 flex-1">
-            <Field
-              id={ids.branch}
+      {/* --------------------------------------------------------- filters --- */}
+      <Section title={t("reports.new.section.filters")} optionalLabel={t("common.optional")}>
+        {/* The optional section is the tightest on the sheet — density varies by
+            what the section is for, it is not one padding value repeated. */}
+        <Box className="cr-sheet__fields cr-sheet__fields--tight flex-col sm:flex-row">
+          <Box className="min-w-0 flex-1">
+            {/* Free text — no repo-discovered dropdown (REQ-001 §4.6). */}
+            <TextInput
+              name="branch"
+              type="text"
               label={t("reports.new.branch")}
-              error={fieldErrors.branch}
-              hint={t("reports.new.branch.hint")}
-            >
-              {/* Free text — no repo-discovered dropdown (REQ-001 §4.6). */}
-              <input
-                id={ids.branch}
-                name="branch"
-                type="text"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                disabled={busy}
-                value={branch}
-                onChange={(event) => onBranchChange(event.target.value)}
-                aria-invalid={fieldErrors.branch !== undefined}
-                aria-describedby={describedBy(ids.branch, fieldErrors.branch, true)}
-              />
-            </Field>
-          </div>
-          <div className="min-w-0 flex-1">
-            <Field
-              id={ids.author}
+              description={
+                fieldErrors.branch === undefined ? t("reports.new.branch.hint") : undefined
+              }
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+              value={branch}
+              onChange={(event) => onBranchChange(event.currentTarget.value)}
+              error={fieldError(fieldErrors.branch)}
+              inputWrapperOrder={FIELD_WRAPPER_ORDER}
+            />
+          </Box>
+          <Box className="min-w-0 flex-1">
+            <TextInput
+              name="author"
+              type="text"
               label={t("reports.new.author")}
-              error={fieldErrors.author}
-              hint={t("reports.new.author.hint")}
-            >
-              <input
-                id={ids.author}
-                name="author"
-                type="text"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                disabled={busy}
-                value={author}
-                onChange={(event) => onAuthorChange(event.target.value)}
-                aria-invalid={fieldErrors.author !== undefined}
-                aria-describedby={describedBy(ids.author, fieldErrors.author, true)}
-              />
-            </Field>
-          </div>
-        </div>
-      </Group>
+              description={
+                fieldErrors.author === undefined ? t("reports.new.author.hint") : undefined
+              }
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+              value={author}
+              onChange={(event) => onAuthorChange(event.currentTarget.value)}
+              error={fieldError(fieldErrors.author)}
+              inputWrapperOrder={FIELD_WRAPPER_ORDER}
+            />
+          </Box>
+        </Box>
+      </Section>
 
-      <Group title={t("reports.new.section.report")}>
-        <fieldset className="m-0 border-0 p-0">
-          <legend className="cr-legend mb-2">{t("reports.new.language.label")}</legend>
-          <div className="cr-segmented">
-            {LANGUAGES.map((code) => (
-              <label key={code} title={t(`header.language.${code}` as MessageKey)}>
-                <input
-                  type="radio"
-                  name="report-language"
-                  value={code}
-                  disabled={busy}
-                  checked={reportLanguage === code}
-                  onChange={() => onReportLanguageChange(code)}
-                />
-                <span>{t(`header.language.${code}.short` as MessageKey)}</span>
-              </label>
-            ))}
-          </div>
-          <p className="m-0 mt-2 text-xs text-muted">{t("reports.new.language.hint")}</p>
-        </fieldset>
+      {/* ---------------------------------------------------------- report --- */}
+      <Section title={t("reports.new.section.report")}>
+        <Box className="cr-sheet__fields">
+          <Box component="fieldset" className="m-0 border-0 p-0">
+            <Box component="legend" className="cr-legend mb-2">
+              {t("reports.new.language.label")}
+            </Box>
+            <SegmentedControl
+              className="cr-seg"
+              name="report-language"
+              disabled={busy}
+              value={reportLanguage}
+              onChange={(value) => {
+                if (isLanguageValue(value)) onReportLanguageChange(value);
+              }}
+              data={LANGUAGES.map((code) => ({
+                value: code,
+                // The full language name stays on `title`, exactly as TASK-007
+                // had it — a supplement to the visible TH/EN, never the only cue.
+                label: (
+                  <span title={t(`header.language.${code}` as MessageKey)}>
+                    {t(`header.language.${code}.short` as MessageKey)}
+                  </span>
+                ),
+              }))}
+            />
+            <Text component="p" className="m-0 mt-2" fz="0.75rem" c="var(--color-muted)">
+              {t("reports.new.language.hint")}
+            </Text>
+          </Box>
 
-        <Field
-          id={ids.extraContext}
-          label={t("reports.new.extraContext")}
-          error={fieldErrors.extraContext}
-          hint={t("reports.new.extraContext.hint")}
-        >
-          <textarea
-            id={ids.extraContext}
+          <Textarea
             name="extraContext"
+            label={t("reports.new.extraContext")}
+            description={
+              fieldErrors.extraContext === undefined
+                ? t("reports.new.extraContext.hint")
+                : undefined
+            }
             rows={6}
+            resize="vertical"
             disabled={busy}
             value={extraContext}
-            onChange={(event) => onExtraContextChange(event.target.value)}
+            onChange={(event) => onExtraContextChange(event.currentTarget.value)}
+            error={fieldError(fieldErrors.extraContext)}
             aria-invalid={fieldErrors.extraContext !== undefined || counterOver}
-            aria-describedby={describedBy(ids.extraContext, fieldErrors.extraContext, true)}
+            inputWrapperOrder={FIELD_WRAPPER_ORDER}
           />
-          {/* Live counter, inside the field so it sits on the field's own
-              gap rather than needing a negative margin. `aria-live=polite`
-              keeps it from being announced on every keystroke. */}
-          <p
-            className={`cr-nums m-0 text-xs ${counterOver ? "font-semibold text-danger" : "text-muted"}`}
+          {/* Live counter. `aria-live=polite` keeps it from being announced on
+              every keystroke; over the limit it gains weight as well as colour,
+              because hue is never the only cue. */}
+          <Text
+            component="p"
+            className="cr-nums m-0"
+            fz="0.75rem"
+            fw={counterOver ? 600 : 400}
+            c={counterOver ? "var(--color-danger)" : "var(--color-muted)"}
             aria-live="polite"
           >
             {contextLength.toLocaleString("en-US")} /{" "}
             {EXTRA_CONTEXT_MAX.toLocaleString("en-US")} {t("reports.new.extraContext.counter")}
-          </p>
-        </Field>
-      </Group>
-    </div>
+          </Text>
+        </Box>
+      </Section>
+    </Box>
   );
 }
 
 /* ------------------------------------------------------------ primitives --- */
 
-/**
- * The id a control points `aria-describedby` at: its error line when there is
- * one, otherwise its hint. `Field` below renders exactly one of the two under
- * the same ids, so the description a screen reader announces is always the line
- * that is actually on screen.
- */
-function describedBy(id: string, error: string | undefined, hasHint: boolean): string | undefined {
-  if (error) return `${id}-error`;
-  return hasHint ? `${id}-hint` : undefined;
+/** `Language` is the i18n contract, so the narrowing lives with the values. */
+function isLanguageValue(value: string): value is Language {
+  return (LANGUAGES as readonly string[]).includes(value);
 }
 
 /**
- * A labelled group. The heading sits directly above its content in the same
- * column — never a tag-left/header-right two-column section head, which is a
- * named anti-pattern. Density varies by position rather than being uniform.
+ * What Mantine's `error` slot receives. `undefined` keeps the slot closed (and
+ * `aria-invalid` off); a message arrives with its icon and is announced, so the
+ * state is never carried by colour alone (FRONTEND-STANDARD §2).
  */
-function Group({
+function fieldError(message: string | undefined) {
+  if (message === undefined) return undefined;
+  return (
+    <span className="cr-fielderror" role="alert">
+      <AlertTriangle size={14} className="cr-fielderror__icon" aria-hidden="true" />
+      <span>{message}</span>
+    </span>
+  );
+}
+
+/**
+ * A section of the sheet. TASK-007 gave each of the four an identical `mb-10`
+ * and a free-floating heading; the redesign separates them with a hairline that
+ * runs the field measure and sets the heading directly under it — the heading
+ * stays in the same column as its content, never a tag-left / header-right
+ * two-column section head, which is a named hard ban.
+ */
+function Section({
   title,
   optionalLabel,
   children,
@@ -344,53 +405,18 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-10 last:mb-0">
-      <h2 className="m-0 mb-5 flex items-baseline gap-2 font-display text-base font-semibold text-ink">
-        {title}
+    <Box component="section" className="cr-sheet__section">
+      <Group gap="var(--space-2)" align="baseline" className="mb-5">
+        <Title order={2} fz="1rem" fw={600} c="var(--color-ink)">
+          {title}
+        </Title>
         {optionalLabel ? (
-          <span className="font-body text-xs font-normal text-muted">({optionalLabel})</span>
+          <Text component="span" fz="0.75rem" c="var(--color-muted)">
+            ({optionalLabel})
+          </Text>
         ) : null}
-      </h2>
-      <div className="flex flex-col gap-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  id,
-  label,
-  hint,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint: string | null;
-  error: string | undefined;
-  children: React.ReactNode;
-}) {
-  const errorId = `${id}-error`;
-  const hintId = `${id}-hint`;
-  return (
-    <div className="cr-field" data-state={error ? "error" : undefined}>
-      <label htmlFor={id}>{label}</label>
+      </Group>
       {children}
-      {error ? (
-        <FieldError id={errorId} message={error} />
-      ) : hint ? (
-        <p id={hintId} className="m-0 text-xs text-muted">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function FieldError({ id, message }: { id: string; message: string }) {
-  return (
-    <p id={id} role="alert" className="m-0 flex items-start gap-2 text-xs text-danger">
-      <AlertTriangle size={14} className="mt-1 shrink-0" aria-hidden="true" />
-      <span>{message}</span>
-    </p>
+    </Box>
   );
 }

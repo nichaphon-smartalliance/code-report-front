@@ -12,9 +12,11 @@ import { useDelayedFlag } from "@/hooks/common";
  * The shell's header bar (TASK-006 item 2), rebuilt Mantine-first and
  * redesigned by TASK-011 in the cobalt register.
  *
- * What changed from the hand-rolled bar: it is now a flush, full-width sticky
- * instrument bar whose single hairline runs edge to edge while the content
- * inside it stays on the shell measure; the product name carries the cobalt
+ * What changed from the hand-rolled bar: it is now a sticky instrument bar
+ * whose single hairline STOPS at the content measure rather than running the
+ * full viewport width — that one detail is what keeps it off hallmark's "AI
+ * nav" fingerprint, and it is described again at the element itself below; the
+ * product name carries the cobalt
  * signal tick; and the signed-in identity moved out from under the wordmark to
  * the right of the bar, set as a bordered mono chip rather than a caption.
  *
