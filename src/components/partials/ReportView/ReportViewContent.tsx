@@ -1,8 +1,9 @@
 "use client";
 
-import { Box, Group, Text, Title } from "@mantine/core";
-import { WifiOff } from "lucide-react";
+import { Box, Button, Group, Text, Title } from "@mantine/core";
+import { ArrowLeft, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import type { MessageKey } from "@/constant/text";
 import { useI18n } from "@/context/i18n";
 import { HOME_PATH } from "@/context/session";
@@ -48,22 +49,70 @@ export function ReportViewContent({ jobId }: { jobId: string }) {
   const router = useRouter();
   const { job, loadError, offline, polling } = useReportJob(jobId);
 
-  function handleTryAgain(failed: ReportJob) {
-    // The PAT is not in `params` and is not written here — a retried private
-    // run asks for the token again (TASK-008 item 5).
+  /**
+   * The handoff back to the form (TASK-019 / REQ-004 Requirement 4a), written
+   * **when this page has the job** rather than on a click.
+   *
+   * Why here and not at the affordance: Requirement 4a is about *going back*,
+   * not about which control was used. The browser's own Back button remounts
+   * the form fresh and never runs a handler of ours, so writing the handoff on
+   * a click can only fill the form for the one path that has a click. Written
+   * here, every path back — browser Back, the back control, the "try again"
+   * control, or opening the form again by any means — reads the same payload,
+   * and `takeRetryParams` still removes it as it is read.
+   *
+   * The PAT is not in `params`, is not in `RetryParams` and is not written
+   * here: a private repository asks for its token again (SPEC-002 freeze
+   * item 6 / REQ-001's PAT rules).
+   */
+  const repoUrl = job?.params.repoUrl;
+  const branch = job?.params.branch ?? "";
+  const author = job?.params.author ?? "";
+  const dateFrom = job?.params.dateFrom;
+  const dateTo = job?.params.dateTo;
+  const reportLanguage = job?.params.language;
+
+  // Depends on the six VALUES, not on `job`: polling replaces the job object
+  // every 2 s while `params` never changes, so this writes once per run rather
+  // than once per poll.
+  useEffect(() => {
+    if (repoUrl === undefined || dateFrom === undefined || dateTo === undefined) return;
+    if (reportLanguage === undefined) return;
     writeRetryParams({
-      repoUrl: failed.params.repoUrl,
-      branch: failed.params.branch ?? "",
-      author: failed.params.author ?? "",
-      dateFrom: failed.params.dateFrom,
-      dateTo: failed.params.dateTo,
-      language: failed.params.language,
+      repoUrl,
+      branch,
+      author,
+      dateFrom,
+      dateTo,
+      language: reportLanguage,
     });
+  }, [repoUrl, branch, author, dateFrom, dateTo, reportLanguage]);
+
+  function handleTryAgain() {
+    // The handoff is already on disk (the effect above), so this only
+    // navigates. Kept as its own control with its own words: "try again" and
+    // "back to the form" mean different things on a failed run.
     router.push(HOME_PATH);
   }
 
   return (
     <Box>
+      {/* Present in every state — QUEUED, RUNNING, DONE, NO_COMMITS, FAILED.
+          During a RUNNING run this is the only way off the screen, which is
+          the complaint REQ-004 Requirement 4 is about. It is the shell's own
+          subtle-accent control object (the header's logout uses the same one);
+          nothing about the run dossier is restructured. */}
+      <Button
+        type="button"
+        variant="subtle"
+        color="accent"
+        className="-ml-3 mb-4"
+        onClick={() => router.push(HOME_PATH)}
+        leftSection={<ArrowLeft size={16} aria-hidden="true" />}
+      >
+        {t("reports.view.back")}
+      </Button>
+
       <Group gap="var(--space-3)" wrap="nowrap" align="center">
         {/* The same 0.85em tick the shell header, the login masthead and the
             new-report head carry — carrying the heading's own size here keeps

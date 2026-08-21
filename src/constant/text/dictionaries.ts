@@ -115,6 +115,7 @@ const th = {
   "reports.view.noCommits.title": "ไม่พบคอมมิตในช่วงเวลาที่เลือก",
   "reports.view.failed.title": "สร้างรายงานไม่สำเร็จ",
   "reports.view.tryAgain": "ลองอีกครั้ง",
+  "reports.view.back": "กลับไปหน้าฟอร์ม",
   "reports.view.offline": "ติดต่อเซิร์ฟเวอร์ไม่ได้ กำลังลองใหม่",
 } as const;
 
@@ -213,6 +214,7 @@ const en: Record<MessageKey, string> = {
   "reports.view.noCommits.title": "No commits in the selected period",
   "reports.view.failed.title": "Could not generate the report",
   "reports.view.tryAgain": "Try again",
+  "reports.view.back": "Back to the form",
   "reports.view.offline": "Cannot reach the server — retrying.",
 };
 

@@ -9,7 +9,7 @@ import { useI18n } from "@/context/i18n";
 import { useDelayedFlag } from "@/hooks/common";
 import { ApiError, NetworkError, VALIDATION_ERROR } from "@/lib/api/client";
 import { formatIsoDate } from "@/lib/format";
-import { takeRetryParams } from "@/lib/storage/retryParams";
+import { takeRetryParams, writeRetryParams } from "@/lib/storage/retryParams";
 import { reportPath } from "@/context/session";
 import { createReport } from "@/services/report.service";
 import type { CreateReportInput } from "@/types/api/main";
@@ -166,7 +166,25 @@ export function NewReportContent() {
       setPat("");
       setIsPrivate(false);
       setPhase("success");
-      router.replace(reportPath(jobId));
+      // The handoff back to this form (TASK-019 / Requirement 4a). The report
+      // page rewrites the same payload the moment it has the job, so this is
+      // not the only writer — it exists to close the window BEFORE the first
+      // poll returns, where the page has no `params` to write from and a
+      // reader going straight back would otherwise find an empty form.
+      // Six values, the same six the run was submitted with. **No `pat`:** the
+      // type has no such key and the token has just been wiped above.
+      writeRetryParams({
+        repoUrl: body.repoUrl,
+        branch: body.branch ?? "",
+        author: body.author ?? "",
+        dateFrom: body.dateFrom,
+        dateTo: body.dateTo,
+        language: body.language,
+      });
+      // `push`, not `replace` (TASK-019 / REQ-004 Requirement 4): `replace`
+      // overwrote this form's history entry, so the browser's own Back button
+      // could not return to it and the report page was a dead end.
+      router.push(reportPath(jobId));
     } catch (cause: unknown) {
       if (cause instanceof ApiError) {
         // SPEC-001: show the server's own `message`; never compose text from a
@@ -310,7 +328,7 @@ export function NewReportContent() {
               className="mt-5"
               color={phase === "error" ? "danger" : phase === "success" ? "success" : "accent"}
               fullWidth
-              // Stays disabled through `success` as well: `router.replace` is
+              // Stays disabled through `success` as well: `router.push` is
               // async, and a second click in that window would start a SECOND
               // job — tokenless, because the PAT has just been cleared
               // (Sober's TASK-007 review, minor 2).
