@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { HOME_PATH, LOGIN_PATH, useSession } from "@/lib/session/SessionProvider";
+import { HOME_PATH, LOGIN_PATH, useSession } from "@/context/session";
 
 /**
  * The entry point has no content of its own: it waits for `GET /api/auth/me`

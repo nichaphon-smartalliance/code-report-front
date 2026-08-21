@@ -1,7 +1,13 @@
-import type { Language } from "@/lib/i18n/dictionaries";
+import type { Language } from "@/constant/text";
+import type { ApiErrorBody } from "@/types/api/main";
 
 /**
- * The ONE place that talks to the backend (TASK-006 item 5).
+ * The transport: the ONE place that actually calls `fetch` (TASK-006 item 5).
+ *
+ * TASK-010 split the original 280-line `client.ts` into four files by moving
+ * declarations verbatim. This one keeps the transport, the error classes and
+ * the 401 handler; the typed per-endpoint functions live in `api-main.ts`, the
+ * call-site wrappers in `services/`, and the wire shapes in `types/api/main/`.
  *
  * Q-SA-5 default (TASK-006 `## Questions`): frontend and backend are served on
  * the same origin with `/api/*` proxied to the backend, so the base URL is a
@@ -14,11 +20,7 @@ export const API_BASE_URL = process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "/api";
 export const AUTH_REQUIRED = "AUTH_REQUIRED";
 export const VALIDATION_ERROR = "VALIDATION_ERROR";
 
-export type ApiErrorBody = {
-  code: string;
-  message: string;
-  fields?: Record<string, string>;
-};
+export type { ApiErrorBody };
 
 /**
  * `message` is carried verbatim from the server. SPEC-001: the backend already
@@ -140,135 +142,4 @@ function isFieldMap(value: unknown): value is Record<string, string> {
     value !== null &&
     Object.values(value).every((entry) => typeof entry === "string")
   );
-}
-
-/* ------------------------------------------------------------------ auth --- */
-
-export type SessionUser = {
-  id: string;
-  username: string;
-  displayName: string;
-};
-
-export async function fetchMe(language: Language, signal?: AbortSignal): Promise<SessionUser> {
-  const data = await apiRequest<{ user: SessionUser }>("/auth/me", {
-    language,
-    expect401: true,
-    ...(signal ? { signal } : {}),
-  });
-  return data.user;
-}
-
-export async function login(
-  credentials: { username: string; password: string },
-  language: Language,
-): Promise<SessionUser> {
-  const data = await apiRequest<{ user: SessionUser }>("/auth/login", {
-    method: "POST",
-    body: credentials,
-    language,
-    // A 401 here is INVALID_CREDENTIALS, shown inline — not a session timeout.
-    expect401: true,
-  });
-  return data.user;
-}
-
-export async function logout(language: Language): Promise<void> {
-  await apiRequest<void>("/auth/logout", { method: "POST", language });
-}
-
-/* --------------------------------------------------------------- reports --- */
-
-/**
- * The `POST /api/reports` body, exactly as SPEC-001 defines it.
- *
- * `pat` is optional and **must be absent, not empty**, for a public repository —
- * the form omits the key entirely rather than sending `"pat": ""`. It exists in
- * this object for the length of one `fetch` and is never persisted anywhere
- * (REQ-001 §11; SPEC-001 Non-functional → PAT handling).
- *
- * `dateFrom`/`dateTo` are plain `YYYY-MM-DD` Gregorian strings taken straight
- * from the date inputs — the browser's timezone never touches them, and a
- * single day is `dateFrom === dateTo`.
- */
-export type CreateReportInput = {
-  repoUrl: string;
-  pat?: string;
-  branch?: string;
-  author?: string;
-  dateFrom: string;
-  dateTo: string;
-  extraContext?: string;
-  language: Language;
-};
-
-export async function createReport(
-  input: CreateReportInput,
-  language: Language,
-): Promise<{ jobId: string }> {
-  return apiRequest<{ jobId: string }>("/reports", {
-    method: "POST",
-    body: input,
-    language,
-  });
-}
-
-/** SPEC-001 `GET /api/reports/:jobId` — `status`. */
-export const REPORT_STATUSES = ["QUEUED", "RUNNING", "DONE", "NO_COMMITS", "FAILED"] as const;
-export type ReportStatus = (typeof REPORT_STATUSES)[number];
-
-/**
- * The terminal statuses. `NO_COMMITS` is a **successful** outcome, not an error
- * (SPEC-001 "Error codes"; REQ-001 AC 5) — it is terminal for polling and
- * nothing more.
- */
-export const TERMINAL_STATUSES: readonly ReportStatus[] = ["DONE", "NO_COMMITS", "FAILED"];
-
-/** SPEC-001 `stage` — the seven-step worker, `null` before it starts. */
-export const REPORT_STAGES = [
-  "CLONING",
-  "READING_CODEBASE",
-  "READING_COMMITS",
-  "AI_PROJECT",
-  "AI_COMMITS",
-  "AI_WRITING",
-] as const;
-export type ReportStage = (typeof REPORT_STAGES)[number];
-
-/**
- * The run's own parameters, echoed back so the reader knows what they are
- * looking at. **`pat` is not in this response and must never be displayed** —
- * SPEC-001 marks the field "never `pat`", and this type has no such key.
- */
-export type ReportParams = {
-  repoUrl: string;
-  branch?: string | null;
-  author?: string | null;
-  dateFrom: string;
-  dateTo: string;
-  language: Language;
-};
-
-export type ReportJob = {
-  jobId: string;
-  status: ReportStatus;
-  stage?: ReportStage | null;
-  progress?: { current: number; total: number } | null;
-  params: ReportParams;
-  commitCount?: number | null;
-  /** Only when `status === "DONE"` (and the templated note when `NO_COMMITS`). */
-  report?: { markdown: string; language: Language } | null;
-  /** Only when `status === "FAILED"`. `message` is shown verbatim. */
-  error?: { code: string; message: string } | null;
-};
-
-export async function fetchReport(
-  jobId: string,
-  language: Language,
-  signal?: AbortSignal,
-): Promise<ReportJob> {
-  return apiRequest<ReportJob>(`/reports/${encodeURIComponent(jobId)}`, {
-    language,
-    ...(signal ? { signal } : {}),
-  });
 }

@@ -4,7 +4,7 @@ import "./globals.css";
 import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_Thai, Trirong } from "next/font/google";
-import { Providers } from "./providers";
+import { UIProvider } from "@/components/providers";
 
 /**
  * Two faces plus a mono — hallmark's 2+1 discipline; a one-font page is a
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ColorSchemeScript defaultColorScheme="light" />
       </head>
       <body className="font-body">
-        <Providers>{children}</Providers>
+        <UIProvider>{children}</UIProvider>
       </body>
     </html>
   );
