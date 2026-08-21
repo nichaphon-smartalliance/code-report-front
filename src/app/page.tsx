@@ -17,5 +17,7 @@ export default function IndexPage() {
     else if (session.status === "anonymous") router.replace(LOGIN_PATH);
   }, [session.status, router]);
 
-  return <div className="min-h-screen bg-paper" />;
+  // Colour comes from the token block via <body>; a Tailwind colour utility
+  // here would be a second system (SPEC-002 Decision 3).
+  return <div className="min-h-screen" />;
 }

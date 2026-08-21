@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Button, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { AlertTriangle, Clock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useState } from "react";
@@ -11,7 +12,19 @@ import { ApiError, NetworkError } from "@/lib/api/client";
 import type { Phase } from "./Login.config";
 
 /**
- * Login (TASK-006 item 3 / SPEC-001 "Frontend" 1).
+ * Login (TASK-006 item 3 / SPEC-001 "Frontend" 1), rebuilt Mantine-first and
+ * redesigned by TASK-011 in the cobalt register.
+ *
+ * The structural change: the screen was one narrow left-biased column with the
+ * product name stacked on top of the form. It is now an asymmetric masthead +
+ * form pair split by a single vertical hairline from 48rem up, with the product
+ * name demoted to a mono eyebrow beside the cobalt signal tick and the page
+ * heading promoted to the display line. Below 48rem the two stack, masthead
+ * first. It is deliberately not a centred card on a full-viewport hero.
+ *
+ * NO COPY CHANGED. Every string is the one the dictionary already held (Q14
+ * closed the copy bundle); the only string this TASK touches anywhere is the
+ * product name itself, `app.name` → `KnowCode` (REQ-001 Requirement 14 / Q12).
  *
  * There is no "forgot password" link and no "create account" link, here or
  * anywhere else in the app: the stakeholder creates accounts at installation
@@ -27,8 +40,6 @@ export function LoginContent() {
   const params = useSearchParams();
   const router = useRouter();
 
-  const usernameId = useId();
-  const passwordId = useId();
   const errorId = useId();
 
   const [username, setUsername] = useState("");
@@ -70,104 +81,146 @@ export function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="mx-auto flex max-w-shell justify-end px-4 pt-4 sm:px-8">
+    <Box className="flex min-h-screen flex-col" bg="var(--color-paper)">
+      {/* The same flush hairline bar the signed-in shell carries, so the two
+          screens read as one instrument rather than two designs. */}
+      <Group
+        className="mx-auto w-full max-w-shell border-0 border-b border-solid px-4 py-3 sm:px-8"
+        justify="flex-end"
+        style={{ borderBottomColor: "var(--color-rule)" }}
+      >
         <LanguageSwitch />
-      </div>
+      </Group>
 
-      {/* Biased left, sized to its content — not a full-viewport centred hero. */}
-      <div className="mx-auto max-w-shell px-4 pb-20 pt-10 sm:px-8 sm:pt-16">
-        <div className="cr-enter max-w-form">
-          <p className="m-0 font-display text-3xl font-semibold leading-tight text-ink">
-            {t("app.name")}
-          </p>
-          <hr className="my-6 h-px w-12 border-0 bg-accent" />
+      <Box className="mx-auto w-full max-w-shell flex-1 px-4 pb-20 pt-12 sm:px-8 sm:pt-20">
+        <Box className="cr-signin">
+          <Box className="cr-enter min-w-0">
+            <Group gap="var(--space-3)" wrap="nowrap" className="mb-6">
+              <span className="cr-tick" aria-hidden="true" />
+              <Text
+                component="p"
+                className="m-0 truncate"
+                ff="monospace"
+                fz="0.8125rem"
+                fw={500}
+                lh={1}
+                c="var(--color-ink)"
+                style={{ letterSpacing: "0.14em" }}
+              >
+                {t("app.name")}
+              </Text>
+            </Group>
 
-          <h1 className="m-0 mb-8 font-body text-base font-semibold tracking-wide text-muted">
-            {t("login.heading")}
-          </h1>
-
-          {expired ? (
-            <p
-              className="m-0 mb-6 flex items-start gap-2 rounded border border-solid border-rule bg-paper-2 px-4 py-3 text-sm text-ink"
-              role="status"
+            <Title
+              order={1}
+              className="m-0"
+              fz="clamp(2rem, 7vw, 3rem)"
+              fw={600}
+              lh={1.1}
+              c="var(--color-ink)"
+              style={{ letterSpacing: "-0.02em" }}
             >
-              <Clock size={16} className="mt-1 shrink-0 text-muted" aria-hidden="true" />
-              {t("login.sessionExpired")}
-            </p>
-          ) : null}
+              {t("login.heading")}
+            </Title>
+          </Box>
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="flex flex-col gap-5">
-              <div className="cr-field" data-state={phase === "error" ? "error" : undefined}>
-                <label htmlFor={usernameId}>{t("login.username")}</label>
-                <input
-                  id={usernameId}
+          <Box className="cr-signin__form min-w-0">
+            <form onSubmit={handleSubmit} noValidate>
+              <Stack gap="var(--space-5)">
+                {expired ? (
+                  <Text component="p" className="cr-notice" role="status">
+                    <Clock size={16} className="cr-notice__icon" aria-hidden="true" />
+                    <span>{t("login.sessionExpired")}</span>
+                  </Text>
+                ) : null}
+
+                {/* `withAsterisk={false}` on both fields: the field stays
+                    `required`, but Mantine's asterisk would put a character on
+                    screen that the dictionary does not hold and that TASK-006's
+                    labels never had (Q14 — the copy bundle is closed). */}
+                <TextInput
                   name="username"
                   type="text"
+                  label={t("login.username")}
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck={false}
                   required
+                  withAsterisk={false}
                   disabled={busy}
                   value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  aria-invalid={phase === "error"}
-                  aria-describedby={errorMessage ? errorId : undefined}
+                  onChange={(event) => setUsername(event.currentTarget.value)}
+                  error={phase === "error"}
+                  // Mantine owns `aria-describedby` on its inputs (it points at
+                  // its own error/description slots and overwrites anything passed
+                  // in — measured, not assumed). `aria-errormessage` is the ARIA
+                  // 1.2 partner of `aria-invalid=true`, it survives, and it links
+                  // the same alert the previous build linked with `describedby`.
+                  aria-errormessage={errorMessage ? errorId : undefined}
                 />
-              </div>
 
-              <div className="cr-field" data-state={phase === "error" ? "error" : undefined}>
-                <label htmlFor={passwordId}>{t("login.password")}</label>
                 {/* type=password, current-password, and never written to
                     localStorage/sessionStorage — it lives in component state
-                    for the length of the submit and nowhere else. */}
-                <input
-                  id={passwordId}
+                    for the length of the submit and nowhere else.
+                    Deliberately `TextInput type="password"` and NOT Mantine's
+                    `PasswordInput` — see `## Questions` Q-FE-12: that component
+                    always renders a reveal toggle, which is behaviour SPEC-002
+                    does not have, a 28px hit target, and an English-only
+                    `aria-label` baked into the library. */}
+                <TextInput
                   name="password"
                   type="password"
+                  label={t("login.password")}
                   autoComplete="current-password"
                   required
+                  withAsterisk={false}
                   disabled={busy}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  aria-invalid={phase === "error"}
-                  aria-describedby={errorMessage ? errorId : undefined}
+                  onChange={(event) => setPassword(event.currentTarget.value)}
+                  error={phase === "error"}
+                  // Mantine owns `aria-describedby` on its inputs (it points at
+                  // its own error/description slots and overwrites anything passed
+                  // in — measured, not assumed). `aria-errormessage` is the ARIA
+                  // 1.2 partner of `aria-invalid=true`, it survives, and it links
+                  // the same alert the previous build linked with `describedby`.
+                  aria-errormessage={errorMessage ? errorId : undefined}
                 />
-              </div>
 
-              {errorMessage ? (
-                <p
-                  id={errorId}
-                  role="alert"
-                  className="m-0 flex items-start gap-2 rounded border border-solid border-danger bg-danger-soft px-4 py-3 text-sm text-danger"
-                >
-                  {/* Never colour alone: the icon and the words carry it too. */}
-                  <AlertTriangle size={16} className="mt-1 shrink-0" aria-hidden="true" />
-                  <span>
-                    <strong className="font-semibold">{t("login.errorTitle")}</strong>
-                    {" — "}
-                    {errorMessage}
-                  </span>
-                </p>
-              ) : null}
+                {errorMessage ? (
+                  // Never colour alone: the icon and the words carry it too.
+                  <Text
+                    component="p"
+                    id={errorId}
+                    role="alert"
+                    className="cr-notice cr-notice--danger"
+                  >
+                    <AlertTriangle size={16} className="cr-notice__icon" aria-hidden="true" />
+                    <span>
+                      <strong>{t("login.errorTitle")}</strong>
+                      {" — "}
+                      {errorMessage}
+                    </span>
+                  </Text>
+                ) : null}
 
-              <div>
-                <button
+                {/* The 8th and 7th states: the submit button itself carries the
+                    error / success colour, exactly as the hand-rolled button
+                    did via `data-state`. Both are project tokens, not Mantine's
+                    own red and green. */}
+                <Button
                   type="submit"
-                  className="cr-btn cr-btn--primary w-full sm:w-auto"
+                  color={phase === "error" ? "danger" : phase === "success" ? "success" : "accent"}
+                  fullWidth
                   disabled={busy}
-                  data-loading={busy ? "true" : undefined}
-                  data-state={phase === "error" || phase === "success" ? phase : undefined}
+                  loading={showSpinner}
                 >
-                  {showSpinner ? <span className="cr-spinner" aria-hidden="true" /> : null}
                   {busy ? t("login.submitting") : t("login.submit")}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+                </Button>
+              </Stack>
+            </form>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }

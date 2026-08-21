@@ -2,44 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hallmark · genre: modern-minimal · theme: cobalt · designed-as-app */
+/* Hallmark · pre-emit critique: P5 H5 E5 S4 R5 V4 */
+
 /* ===========================================================================
    THE token block — FRONTEND-STANDARD §1 / hallmark "locked tokens".
    Every colour, face, space, radius and z-index in this app resolves here and
    nowhere else. Tailwind (tailwind.config.ts) and Mantine (src/lib/theme.ts)
    are both thin pointers at these properties, so there is one system, not two.
 
-   Anchor hue 65 (warm). Accent hue 45 (burnt signal orange). Per hallmark
-   references/color.md every neutral carries the anchor's chroma tint, and there
-   is no #000 and no #fff anywhere in this file.
+   TASK-011 picked the theme for the whole product (SPEC-002 Decision 4):
+   hallmark's **cobalt** — the dev-tool register. Anchor hue ~255 (cool).
+   Accent hue 256 (electric cobalt), spent as a signal, never as a flood.
+   Per hallmark references/color.md every neutral carries the anchor's chroma
+   tint, and there is no #000 and no #fff anywhere in this file.
+
+   The shape of this block is unchanged from TASK-006: one block, OKLCH, one
+   accent, neutrals tinted by the anchor. Only the values moved (REQ-003 Q16).
    =========================================================================== */
 :root {
   /* -- surfaces: paper -> ink, all tinted toward the anchor hue -------------- */
-  --color-paper: oklch(97% 0.008 65);
-  --color-paper-2: oklch(94% 0.01 65);
-  --color-paper-3: oklch(90.5% 0.012 65);
-  --color-rule: oklch(84% 0.01 65); /* hairline separators (decorative) */
-  --color-rule-strong: oklch(60% 0.012 65); /* UI boundaries — 3.1:1 on paper */
-  --color-neutral: oklch(56% 0.01 65); /* icons / boundaries — 3.4:1, NOT body */
-  --color-muted: oklch(43% 0.01 60); /* helper + secondary text — 5.4:1 */
-  --color-ink: oklch(21% 0.012 60); /* body + headings — 14:1 */
+  --color-paper: oklch(98.5% 0.004 250); /* engineered cool near-white */
+  --color-paper-2: oklch(96% 0.006 252);
+  --color-paper-3: oklch(92.5% 0.009 254);
+  --color-rule: oklch(88% 0.009 254); /* hairline separators (decorative) */
+  --color-rule-strong: oklch(62% 0.014 256); /* UI boundaries — 3.5:1 on paper */
+  --color-neutral: oklch(58% 0.016 256); /* icons / boundaries — 4.1:1, NOT body */
+  --color-muted: oklch(45% 0.02 257); /* helper + secondary text — 7.1:1 */
+  --color-ink: oklch(24% 0.02 258); /* body + headings — 15.8:1 */
 
   /* -- the ONE accent. Budget: links, active nav, focus ring, primary CTA.
         Never a background fill over ~3% of the viewport. ---------------------- */
-  --color-accent: oklch(46% 0.145 45); /* CTA fill + link text — 4.9:1 on paper */
-  --color-accent-strong: oklch(38% 0.13 45); /* hover / active */
-  --color-accent-ring: oklch(56% 0.17 45); /* focus ring — 3.4:1, UI-grade */
-  --color-accent-soft: oklch(94% 0.028 45); /* tint wash */
+  --color-accent: oklch(47% 0.19 256); /* CTA fill + link text — 6.6:1 on paper */
+  --color-accent-strong: oklch(38% 0.16 258); /* hover / active */
+  --color-accent-ring: oklch(58% 0.2 256); /* focus ring — 4.2:1, UI-grade */
+  --color-accent-soft: oklch(95% 0.03 256); /* tint wash */
 
   /* -- meaning colours. Never carried by hue alone: every use pairs with an
         icon or a word (FRONTEND-STANDARD §2, hallmark colour bans). ---------- */
-  --color-danger: oklch(45% 0.15 25);
-  --color-danger-soft: oklch(94.5% 0.028 25);
-  --color-success: oklch(45% 0.1 150);
+  --color-danger: oklch(45% 0.16 25);
+  --color-danger-soft: oklch(95% 0.028 25);
+  --color-success: oklch(45% 0.11 155);
 
   /* -- type. Display face + body face + mono; roman headers only.
         Literal face names appear ONLY here, as fallbacks behind the next/font
         variables — no rule anywhere else in src/ declares a font-family. ----- */
-  --font-display: var(--font-face-display), Georgia, "Times New Roman", serif;
+  --font-display: var(--font-face-display), "Segoe UI", system-ui, sans-serif;
   --font-body: var(--font-face-body), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-face-mono), ui-monospace, "Cascadia Mono", monospace;
 
@@ -56,9 +64,15 @@
   --space-16: 4rem;
   --space-20: 5rem;
 
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
+  /* Cobalt's "drawn with a ruler" radii: tight and technical, not pills. */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* The hit-target floor (FRONTEND-STANDARD §3 gate 2). Mantine's `md` control
+     is 42px; a coarse pointer needs 44. Declared here so the Mantine theme can
+     point at it instead of a call site hard-coding a height. */
+  --control-h: 2.75rem;
 
   /* -- the six-level named z scale. No arbitrary z-index anywhere. ---------- */
   --z-base: 0;
@@ -87,6 +101,13 @@
     overflow-x: clip;
     background-color: var(--color-paper);
     color: var(--color-ink);
+  }
+
+  /* The body face, applied from the token block rather than by a Tailwind
+     `font-*` utility on <body> (SPEC-002 Decision 3 — Tailwind carries no
+     type at all). */
+  body {
+    font-family: var(--font-body);
   }
 
   /* Long repo URLs and Thai display headings must break inside a word rather
@@ -120,10 +141,87 @@
   .cr-check input:focus-visible,
   button:focus-visible,
   a:focus-visible,
-  [role="button"]:focus-visible {
+  [role="button"]:focus-visible,
+  /* TASK-011: Mantine renders its own inputs, which match none of the `.cr-*`
+     selectors above and would otherwise fall back to Mantine's ring. One rule,
+     one ring, everywhere. */
+  input:focus-visible,
+  textarea:focus-visible {
     outline: 2px solid var(--color-accent-ring);
     outline-offset: 2px;
     /* transition intentionally omitted — see hallmark "focus rings that animate in" */
+  }
+
+  /* ---------------------------------------------------------------------
+     Cobalt's signal tick (TASK-011). A 3px accent bar cut to the cap height
+     of the wordmark beside it. It is the ONE decorative use of the accent in
+     the shell, and it is the same object on the header and on the login
+     masthead so the two screens read as one product.
+     --------------------------------------------------------------------- */
+  .cr-tick {
+    display: block;
+    inline-size: 3px;
+    block-size: 0.85em;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-accent);
+  }
+
+  /* ---------------------------------------------------------------------
+     A notice line: the expired-session status and the login error. Not a
+     control, so not a Mantine component (SPEC-002 Decision 3 covers controls)
+     — and keeping it on our own tokens is what stops Mantine's `red`/`gray`
+     palettes becoming a second colour system.
+     Danger is never carried by hue alone: an icon and a word ride with it.
+     --------------------------------------------------------------------- */
+  .cr-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    /* A hairline all the way round, NOT a thick coloured left stripe — that is
+       hallmark's "side-stripe card", a critical tell. The meaning is carried by
+       the icon, the words and the surface. (Caught by the TASK-011 audit.) */
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-paper-2);
+    font-size: 0.875rem;
+    color: var(--color-ink);
+  }
+  .cr-notice--danger {
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+  .cr-notice__icon {
+    flex-shrink: 0;
+    margin-block-start: 0.1rem;
+    color: var(--color-neutral);
+  }
+  .cr-notice--danger .cr-notice__icon {
+    color: var(--color-danger);
+  }
+
+  /* ---------------------------------------------------------------------
+     The login worksheet (TASK-011). One column on a phone; from 48rem up an
+     asymmetric masthead + form pair split by a single vertical hairline. It
+     is deliberately NOT a centred card on a full-viewport hero.
+     --------------------------------------------------------------------- */
+  .cr-signin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-10);
+  }
+  @media (min-width: 48rem) {
+    .cr-signin {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+      gap: var(--space-10);
+      align-items: start;
+    }
+    .cr-signin__form {
+      padding-inline-start: var(--space-10);
+      border-inline-start: 1px solid var(--color-rule);
+    }
   }
 
   /* ---------------------------------------------------------------------
@@ -380,6 +478,14 @@
     padding-inline: var(--space-3);
   }
 
+  /* Mantine's segmented control ships a 200ms `ease` slide. Our motion rule is
+     exponential ease-out only, so the two transition variables are re-pointed
+     at our tokens on the element itself (TASK-011). */
+  .cr-seg {
+    --sc-transition-duration: var(--dur-base);
+    --sc-transition-timing-function: var(--ease-out);
+  }
+
   /* A <legend> for a radio group, typographically identical to a field label
      so a segmented control and a text input read as the same kind of thing.
      Declared here rather than as an arbitrary Tailwind value at each call site
@@ -605,6 +711,24 @@
   }
 }
 
+/* ===========================================================================
+   Two states Mantine does not ship, and the 8-state rule owes them on every
+   control (FRONTEND-STANDARD §3 gate 3). Both are the exact move the
+   hand-rolled `.cr-field` / `.cr-segmented` made before TASK-011.
+
+   These sit OUTSIDE `@layer components` on purpose: Tailwind drops a rule in
+   that layer when none of its class names appear in `content`, and these
+   selectors are Mantine's own (documented Styles-API) class names, which
+   appear in no source file. Measured — the rule silently vanished from the
+   build until it was moved out here.
+   =========================================================================== */
+.mantine-Input-input:hover:not(:disabled):not([data-disabled]) {
+  border-color: var(--color-ink);
+}
+.cr-seg .mantine-SegmentedControl-label:hover:not([data-active]):not([data-disabled]) {
+  color: var(--color-ink);
+}
+
 @keyframes cr-rotate {
   to {
     transform: rotate(360deg);
@@ -638,5 +762,8 @@
   .cr-segmented label,
   .cr-progress > span {
     transition: none;
+  }
+  .cr-seg {
+    --sc-transition-duration: 1ms;
   }
 }

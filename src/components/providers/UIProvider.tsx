@@ -3,7 +3,7 @@
 import { MantineProvider } from "@mantine/core";
 import { I18nProvider } from "@/context/i18n";
 import { SessionProvider } from "@/context/session";
-import { theme } from "@/lib/theme";
+import { cssVariablesResolver, theme } from "@/lib/theme";
 
 /**
  * Order matters: the session provider reads the current UI language to send as
@@ -11,7 +11,11 @@ import { theme } from "@/lib/theme";
  */
 export function UIProvider({ children }: { children: React.ReactNode }) {
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    <MantineProvider
+      theme={theme}
+      defaultColorScheme="light"
+      cssVariablesResolver={cssVariablesResolver}
+    >
       <I18nProvider>
         <SessionProvider>{children}</SessionProvider>
       </I18nProvider>

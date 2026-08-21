@@ -3,19 +3,25 @@ import "./globals.css";
 
 import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans_Thai, Trirong } from "next/font/google";
+import { Chakra_Petch, IBM_Plex_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import { UIProvider } from "@/components/providers";
 
 /**
  * Two faces plus a mono — hallmark's 2+1 discipline; a one-font page is a
- * template page. Trirong is a serif with a full Thai character set, so the
+ * template page.
+ *
+ * TASK-011 moved the display face from Trirong (serif) to Chakra Petch, a
+ * squared mechanical grotesk: cobalt's register is the instrument panel, and a
+ * transitional serif is the wrong voice for it. The pick is constrained by
+ * something cobalt's own font list cannot satisfy — this UI is Thai + English,
+ * and Space Grotesk has no Thai. Chakra Petch carries BOTH scripts, so the
  * display voice survives the language switch instead of falling back to a
  * different face when the UI is Thai.
  *
  * These are the ONLY font declarations in the app. Everything else references
  * `--font-display` / `--font-body` / `--font-mono` from the token block.
  */
-const display = Trirong({
+const display = Chakra_Petch({
   subsets: ["latin", "thai"],
   weight: ["500", "600"],
   style: ["normal"], // roman only — no italic face is even loaded
@@ -38,7 +44,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Code Report",
+  // REQ-001 Requirement 14 / Q12: the on-screen product name is `KnowCode`, in
+  // both UI languages. Nothing outside the UI string is renamed.
+  title: "KnowCode",
 };
 
 export const viewport: Viewport = {
@@ -63,7 +71,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <ColorSchemeScript defaultColorScheme="light" />
       </head>
-      <body className="font-body">
+      {/* The body face is applied from the token block (globals.css @layer
+          base), not by a Tailwind font utility. */}
+      <body>
         <UIProvider>{children}</UIProvider>
       </body>
     </html>

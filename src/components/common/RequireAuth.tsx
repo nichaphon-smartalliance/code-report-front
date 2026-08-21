@@ -22,7 +22,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (session.status !== "authenticated") {
     return (
-      <div className="min-h-screen bg-paper px-4 py-12 sm:px-8">
+      <div className="min-h-screen px-4 py-12 sm:px-8">
         <p className="sr-only" role="status">
           {t("common.loading")}
         </p>

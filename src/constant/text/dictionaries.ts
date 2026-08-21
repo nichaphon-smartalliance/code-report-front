@@ -23,7 +23,7 @@ export function isLanguage(value: unknown): value is Language {
 }
 
 const th = {
-  "app.name": "Code Report",
+  "app.name": "KnowCode",
   "app.skipToContent": "ข้ามไปยังเนื้อหา",
 
   "header.languageLabel": "ภาษาของหน้าจอ",
@@ -121,7 +121,7 @@ const th = {
 export type MessageKey = keyof typeof th;
 
 const en: Record<MessageKey, string> = {
-  "app.name": "Code Report",
+  "app.name": "KnowCode",
   "app.skipToContent": "Skip to content",
 
   "header.languageLabel": "Interface language",
