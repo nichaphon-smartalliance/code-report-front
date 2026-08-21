@@ -9,7 +9,7 @@ import { useI18n } from "@/context/i18n";
 import { HOME_PATH } from "@/context/session";
 import { useReportJob } from "@/hooks/reports";
 import { formatIsoDate } from "@/lib/format";
-import { writeRetryParams } from "@/lib/storage/retryParams";
+import { writeRunRetryParams } from "@/lib/storage/retryParams";
 import type { ReportJob } from "@/types/api/main";
 import { ReportResult } from "./ReportResult";
 import { HEADING_SIZE } from "./ReportView.config";
@@ -64,6 +64,12 @@ export function ReportViewContent({ jobId }: { jobId: string }) {
    * The PAT is not in `params`, is not in `RetryParams` and is not written
    * here: a private repository asks for its token again (SPEC-002 freeze
    * item 6 / REQ-001's PAT rules).
+   *
+   * **`writeRunRetryParams`, not `writeRetryParams` (TASK-018 / Requirement
+   * 4b):** the seventh key, `extraContext`, is not in `job.params` at all — no
+   * response carries it — so this writer preserves whatever the form stored
+   * instead of overwriting it with a blank. Writing all seven from here would
+   * wipe the free-text box on the first poll.
    */
   const repoUrl = job?.params.repoUrl;
   const branch = job?.params.branch ?? "";
@@ -78,7 +84,7 @@ export function ReportViewContent({ jobId }: { jobId: string }) {
   useEffect(() => {
     if (repoUrl === undefined || dateFrom === undefined || dateTo === undefined) return;
     if (reportLanguage === undefined) return;
-    writeRetryParams({
+    writeRunRetryParams({
       repoUrl,
       branch,
       author,

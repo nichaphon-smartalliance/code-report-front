@@ -2,9 +2,11 @@
 
 import {
   Box,
+  Button,
   Checkbox,
   Group,
   SegmentedControl,
+  Select,
   Text,
   Textarea,
   TextInput,
@@ -13,19 +15,24 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { LANGUAGES, type Language, type MessageKey } from "@/constant/text";
 import { useI18n } from "@/context/i18n";
+import type { Committer } from "@/types/api/main";
 import {
+  committerValue,
+  daysAgoIso,
   EXTRA_CONTEXT_MAX,
   FIELD_WRAPPER_ORDER,
-  isMode,
+  PERIOD_PRESETS,
+  todayIso,
   type FieldErrors,
-  type Mode,
+  type ListPhase,
 } from "./NewReport.config";
 
 /**
  * The form's field column, rebuilt Mantine-first and redesigned by TASK-012 in
- * the cobalt register the shell and login already speak.
+ * the cobalt register the shell and login already speak, and re-shaped by
+ * TASK-018 (SPEC-003 §"Flow — the re-shaped form").
  *
- * Every control is now a `@mantine/core` component — no native input, select,
+ * Every control is a `@mantine/core` component — no native input, select,
  * textarea, label or button element is written on this screen at all
  * (SPEC-002 Decision 3 rule 2). The three local primitives TASK-010 moved here
  * (`Field`, `FieldError`, `describedBy`) are gone with the native controls they
@@ -33,9 +40,20 @@ import {
  * their `aria-describedby` wiring, so re-implementing them would be a second
  * system.
  *
- * NO COPY CHANGED. Every string is the key the dictionary already held (Q14
- * closed the copy bundle), every field is the field that was here before, and
- * the values they carry are unchanged — see the TASK's freeze walk.
+ * **What TASK-018 re-shaped, and the field order it follows** (Requirement 1a is
+ * a *screen* rule, so the order is part of the requirement): repository URL →
+ * private toggle + token → load branches → branch `Select` → period → committer
+ * → extra context, language, submit. The branch therefore sits in the repository
+ * section, not in "Filters": it is what the rest of the form is gated on, and a
+ * gate below the thing it gates is not a gate.
+ *
+ * Everything from the period down is disabled until that list has loaded
+ * (`unlocked`). There is deliberately **no typed-branch fallback** anywhere on
+ * this screen (Q27), and on a failure the only text shown is the server's own.
+ *
+ * NO EXISTING COPY CHANGED. The keys added here are the twelve the stakeholder
+ * approved as authored (Q-SA-19); the two typing hints and the period-mode keys
+ * went with the controls that read them.
  *
  * The one deliberate a11y carry-over: an error line is announced, so the error
  * node passed to Mantine carries `role="alert"` and an icon. Danger is never
@@ -44,6 +62,8 @@ import {
 
 export type NewReportFieldsProps = {
   busy: boolean;
+  /** The branch list has loaded and is non-empty (REQ-004 Requirement 1a). */
+  unlocked: boolean;
   fieldErrors: FieldErrors;
   repoUrl: string;
   onRepoUrlChange: (value: string) => void;
@@ -51,16 +71,25 @@ export type NewReportFieldsProps = {
   onIsPrivateChange: (value: boolean) => void;
   pat: string;
   onPatChange: (value: string) => void;
-  mode: Mode;
-  onModeChange: (value: Mode) => void;
+  branches: string[];
+  branchPhase: ListPhase;
+  /** The server's own `message`, never composed from a code (SPEC-001). */
+  branchLoadError: string | null;
+  onLoadBranches: () => void;
   dateFrom: string;
   onDateFromChange: (value: string) => void;
   dateTo: string;
   onDateToChange: (value: string) => void;
+  onPreset: (from: string, to: string) => void;
   branch: string;
   onBranchChange: (value: string) => void;
   author: string;
   onAuthorChange: (value: string) => void;
+  committers: Committer[];
+  committerPhase: ListPhase;
+  committerLoadError: string | null;
+  canLoadCommitters: boolean;
+  onLoadCommitters: () => void;
   reportLanguage: Language;
   onReportLanguageChange: (value: Language) => void;
   extraContext: string;
@@ -71,6 +100,7 @@ export type NewReportFieldsProps = {
 
 export function NewReportFields({
   busy,
+  unlocked,
   fieldErrors,
   repoUrl,
   onRepoUrlChange,
@@ -78,16 +108,24 @@ export function NewReportFields({
   onIsPrivateChange,
   pat,
   onPatChange,
-  mode,
-  onModeChange,
+  branches,
+  branchPhase,
+  branchLoadError,
+  onLoadBranches,
   dateFrom,
   onDateFromChange,
   dateTo,
   onDateToChange,
+  onPreset,
   branch,
   onBranchChange,
   author,
   onAuthorChange,
+  committers,
+  committerPhase,
+  committerLoadError,
+  canLoadCommitters,
+  onLoadCommitters,
   reportLanguage,
   onReportLanguageChange,
   extraContext,
@@ -96,6 +134,20 @@ export function NewReportFields({
   counterOver,
 }: NewReportFieldsProps) {
   const { t } = useI18n();
+
+  const branchLoading = branchPhase === "loading";
+  const committerLoading = committerPhase === "loading";
+
+  /** "Everyone" is the empty value, and it sends no `author` key at all. */
+  const committerData = [
+    { value: "", label: t("reports.new.author.everyone") },
+    ...committers.map((entry) => ({
+      value: committerValue(entry),
+      // The person and their commit count, composed from the data rather than
+      // from a new dictionary string.
+      label: `${entry.name} · ${entry.commits.toLocaleString("en-US")}`,
+    })),
+  ];
 
   return (
     <Box className="min-w-0">
@@ -140,13 +192,7 @@ export function NewReportFields({
               }}
               disabled={busy}
               checked={isPrivate}
-              onChange={(event) => {
-                const { checked } = event.currentTarget;
-                onIsPrivateChange(checked);
-                // Turning the toggle off drops the token immediately rather
-                // than leaving it in state where a later submit could send it.
-                if (!checked) onPatChange("");
-              }}
+              onChange={(event) => onIsPrivateChange(event.currentTarget.checked)}
             />
           </Group>
 
@@ -172,31 +218,57 @@ export function NewReportFields({
               inputWrapperOrder={FIELD_WRAPPER_ORDER}
             />
           ) : null}
+
+          {/* One deliberate action, never a fetch on keystroke or blur: each
+              load is a real request against a real remote (SPEC-003 Decision
+              1 / 2.2). */}
+          <Group align="flex-end" gap="var(--space-3)" className="flex-col items-stretch sm:flex-row">
+            <Box className="min-w-0 flex-1">
+              <Select
+                name="branch"
+                label={t("reports.new.branch")}
+                placeholder={t("reports.new.branch.select")}
+                // Not editable and not creatable: there is no typed-branch
+                // fallback on this screen at all (Requirement 1a, Q27).
+                searchable={false}
+                allowDeselect={false}
+                disabled={busy || !unlocked}
+                data={branches}
+                value={branch === "" ? null : branch}
+                onChange={(value) => onBranchChange(value ?? "")}
+                error={fieldError(fieldErrors.branch)}
+                inputWrapperOrder={FIELD_WRAPPER_ORDER}
+              />
+            </Box>
+            <Button
+              type="button"
+              variant="default"
+              disabled={busy}
+              loading={branchLoading}
+              onClick={onLoadBranches}
+            >
+              {branchLoading ? t("reports.new.branch.loading") : t("reports.new.branch.load")}
+            </Button>
+          </Group>
+
+          {/* Three locked states, three different lines — and the failure line
+              is the SERVER's, never one of ours (SPEC-001). */}
+          {branchLoadError !== null ? (
+            <Notice message={branchLoadError} danger />
+          ) : branchPhase === "empty" ? (
+            <Notice message={t("reports.new.branch.empty")} danger />
+          ) : !unlocked ? (
+            <Notice message={t("reports.new.branch.locked")} />
+          ) : null}
         </Box>
       </Section>
 
       {/* ---------------------------------------------------------- period --- */}
       <Section title={t("reports.new.section.period")}>
         <Box className="cr-sheet__fields">
-          <Box component="fieldset" className="m-0 border-0 p-0">
-            <Box component="legend" className="cr-legend mb-2">
-              {t("reports.new.mode.label")}
-            </Box>
-            <SegmentedControl
-              className="cr-seg"
-              name="period-mode"
-              disabled={busy}
-              value={mode}
-              onChange={(value) => {
-                if (isMode(value)) onModeChange(value);
-              }}
-              data={(["day", "range"] as const).map((value) => ({
-                value,
-                label: t(`reports.new.mode.${value}` as MessageKey),
-              }))}
-            />
-          </Box>
-
+          {/* One range, pre-filled today → today (Requirement 2/2a). The
+              single-day / range switch is gone outright — a single day is
+              simply the same date twice, which is what the wire always said. */}
           <Box className="flex flex-col gap-5 sm:flex-row sm:gap-4">
             <Box className="min-w-0 sm:max-w-date sm:flex-1">
               {/*
@@ -204,19 +276,19 @@ export function NewReportFields({
                 `YYYY-MM-DD` we send, so nothing is parsed into a Date and
                 nothing passes through the browser's timezone (TASK-007 item 3).
                 On `@mantine/dates` — and why it is not here — see `## Questions`
-                Q-FE-16 in the TASK.
+                Q-FE-16 in TASK-012.
               */}
               <TextInput
                 name="dateFrom"
                 type="date"
                 classNames={{ input: "cr-nums" }}
-                label={mode === "day" ? t("reports.new.date.day") : t("reports.new.date.from")}
+                label={t("reports.new.date.from")}
                 description={
                   fieldErrors.dateFrom === undefined ? t("reports.new.date.hint") : undefined
                 }
                 required
                 withAsterisk={false}
-                disabled={busy}
+                disabled={busy || !unlocked}
                 value={dateFrom}
                 onChange={(event) => onDateFromChange(event.currentTarget.value)}
                 error={fieldError(fieldErrors.dateFrom)}
@@ -224,32 +296,39 @@ export function NewReportFields({
               />
             </Box>
 
-            {mode === "range" ? (
-              <Box className="min-w-0 sm:max-w-date sm:flex-1">
-                <TextInput
-                  name="dateTo"
-                  type="date"
-                  classNames={{ input: "cr-nums" }}
-                  label={t("reports.new.date.to")}
-                  required
-                  withAsterisk={false}
-                  disabled={busy}
-                  value={dateTo}
-                  onChange={(event) => onDateToChange(event.currentTarget.value)}
-                  error={fieldError(fieldErrors.dateTo)}
-                  inputWrapperOrder={FIELD_WRAPPER_ORDER}
-                />
-              </Box>
-            ) : null}
+            <Box className="min-w-0 sm:max-w-date sm:flex-1">
+              <TextInput
+                name="dateTo"
+                type="date"
+                classNames={{ input: "cr-nums" }}
+                label={t("reports.new.date.to")}
+                required
+                withAsterisk={false}
+                disabled={busy || !unlocked}
+                value={dateTo}
+                onChange={(event) => onDateToChange(event.currentTarget.value)}
+                error={fieldError(fieldErrors.dateTo)}
+                inputWrapperOrder={FIELD_WRAPPER_ORDER}
+              />
+            </Box>
           </Box>
 
-          {/* In single-day mode the range error has no field of its own. */}
-          {mode === "day" && fieldErrors.dateTo ? (
-            <Text component="p" className="cr-fielderror" role="alert">
-              <AlertTriangle size={14} className="cr-fielderror__icon" aria-hidden="true" />
-              <span>{fieldErrors.dateTo}</span>
-            </Text>
-          ) : null}
+          {/* Three relative presets and no more (Requirement 3). Each one only
+              sets the two dates above; none of them submits anything. */}
+          <Group gap="var(--space-2)">
+            {PERIOD_PRESETS.map((preset) => (
+              <Button
+                key={preset.key}
+                type="button"
+                variant="default"
+                size="xs"
+                disabled={busy || !unlocked}
+                onClick={() => onPreset(daysAgoIso(preset.back), todayIso())}
+              >
+                {t(preset.labelKey as MessageKey)}
+              </Button>
+            ))}
+          </Group>
         </Box>
       </Section>
 
@@ -257,44 +336,41 @@ export function NewReportFields({
       <Section title={t("reports.new.section.filters")} optionalLabel={t("common.optional")}>
         {/* The optional section is the tightest on the sheet — density varies by
             what the section is for, it is not one padding value repeated. */}
-        <Box className="cr-sheet__fields cr-sheet__fields--tight flex-col sm:flex-row">
-          <Box className="min-w-0 flex-1">
-            {/* Free text — no repo-discovered dropdown (REQ-001 §4.6). */}
-            <TextInput
-              name="branch"
-              type="text"
-              label={t("reports.new.branch")}
-              description={
-                fieldErrors.branch === undefined ? t("reports.new.branch.hint") : undefined
-              }
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={busy}
-              value={branch}
-              onChange={(event) => onBranchChange(event.currentTarget.value)}
-              error={fieldError(fieldErrors.branch)}
-              inputWrapperOrder={FIELD_WRAPPER_ORDER}
-            />
-          </Box>
-          <Box className="min-w-0 flex-1">
-            <TextInput
-              name="author"
-              type="text"
-              label={t("reports.new.author")}
-              description={
-                fieldErrors.author === undefined ? t("reports.new.author.hint") : undefined
-              }
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={busy}
-              value={author}
-              onChange={(event) => onAuthorChange(event.currentTarget.value)}
-              error={fieldError(fieldErrors.author)}
-              inputWrapperOrder={FIELD_WRAPPER_ORDER}
-            />
-          </Box>
+        <Box className="cr-sheet__fields cr-sheet__fields--tight">
+          {/* The committer list is a clone, so it is never fetched
+              automatically (SPEC-003 Decision 2.2) — and it needs a branch and
+              a valid range, so the action is unavailable until it has both. */}
+          <Group align="flex-end" gap="var(--space-3)" className="flex-col items-stretch sm:flex-row">
+            <Box className="min-w-0 flex-1">
+              <Select
+                name="author"
+                label={t("reports.new.author")}
+                searchable={false}
+                allowDeselect={false}
+                disabled={busy || !unlocked}
+                data={committerData}
+                value={author}
+                onChange={(value) => onAuthorChange(value ?? "")}
+                error={fieldError(fieldErrors.author)}
+                inputWrapperOrder={FIELD_WRAPPER_ORDER}
+              />
+            </Box>
+            <Button
+              type="button"
+              variant="default"
+              disabled={busy || !canLoadCommitters}
+              loading={committerLoading}
+              onClick={onLoadCommitters}
+            >
+              {committerLoading ? t("reports.new.author.loading") : t("reports.new.author.load")}
+            </Button>
+          </Group>
+
+          {committerLoadError !== null ? (
+            <Notice message={committerLoadError} danger />
+          ) : committerPhase === "empty" ? (
+            <Notice message={t("reports.new.author.empty")} />
+          ) : null}
         </Box>
       </Section>
 
@@ -308,7 +384,7 @@ export function NewReportFields({
             <SegmentedControl
               className="cr-seg"
               name="report-language"
-              disabled={busy}
+              disabled={busy || !unlocked}
               value={reportLanguage}
               onChange={(value) => {
                 if (isLanguageValue(value)) onReportLanguageChange(value);
@@ -339,7 +415,7 @@ export function NewReportFields({
             }
             rows={6}
             resize="vertical"
-            disabled={busy}
+            disabled={busy || !unlocked}
             value={extraContext}
             onChange={(event) => onExtraContextChange(event.currentTarget.value)}
             error={fieldError(fieldErrors.extraContext)}
@@ -385,6 +461,25 @@ function fieldError(message: string | undefined) {
       <AlertTriangle size={14} className="cr-fielderror__icon" aria-hidden="true" />
       <span>{message}</span>
     </span>
+  );
+}
+
+/**
+ * A line about the state of a list — the locked/empty explanations, and the
+ * server's own failure message shown verbatim. The same notice object the rest
+ * of the app uses: a hairline all the way round, an icon and words beside the
+ * surface, never a colour on its own and never a thick coloured left stripe.
+ */
+function Notice({ message, danger = false }: { message: string; danger?: boolean }) {
+  return (
+    <Text
+      component="p"
+      role={danger ? "alert" : "status"}
+      className={danger ? "cr-notice cr-notice--danger" : "cr-notice"}
+    >
+      <AlertTriangle size={16} className="cr-notice__icon" aria-hidden="true" />
+      <span>{message}</span>
+    </Text>
   );
 }
 

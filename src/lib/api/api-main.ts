@@ -1,6 +1,14 @@
 import type { Language } from "@/constant/text";
 import { apiRequest } from "@/lib/api/client";
-import type { CreateReportInput, ReportJob, SessionUser } from "@/types/api/main";
+import type {
+  BranchesInput,
+  BranchesResponse,
+  CommittersInput,
+  CommittersResponse,
+  CreateReportInput,
+  ReportJob,
+  SessionUser,
+} from "@/types/api/main";
 
 /**
  * One typed function per backend endpoint. "main" is the backend this app has —
@@ -59,6 +67,40 @@ export async function fetchReport(
   signal?: AbortSignal,
 ): Promise<ReportJob> {
   return apiRequest<ReportJob>(`/reports/${encodeURIComponent(jobId)}`, {
+    language,
+    ...(signal ? { signal } : {}),
+  });
+}
+
+/* ------------------------------------------------- repository inspection --- */
+
+/**
+ * SPEC-003 / TASK-017. Both are POSTs even though they only read: the request
+ * carries a `pat`, and a token must never travel in a URL or a query string
+ * (REQ-001 §11 — the same reason `createReport` is a POST).
+ */
+
+export async function fetchBranches(
+  input: BranchesInput,
+  language: Language,
+  signal?: AbortSignal,
+): Promise<BranchesResponse> {
+  return apiRequest<BranchesResponse>("/repos/branches", {
+    method: "POST",
+    body: input,
+    language,
+    ...(signal ? { signal } : {}),
+  });
+}
+
+export async function fetchCommitters(
+  input: CommittersInput,
+  language: Language,
+  signal?: AbortSignal,
+): Promise<CommittersResponse> {
+  return apiRequest<CommittersResponse>("/repos/committers", {
+    method: "POST",
+    body: input,
     language,
     ...(signal ? { signal } : {}),
   });
